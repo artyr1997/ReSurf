@@ -33,9 +33,10 @@ fn tab_id(label: &str) -> Option<u64> {
     label.strip_prefix("tab-")?.parse().ok()
 }
 
-/// E-ink: pages in greys with a little more contrast, and nothing moves.
+/// E-ink: pages in greys with a little more contrast, white turned into the paper
+/// (#F4F4F4 = 0.957 of white), and nothing moves.
 const EINK_CSS: &str = "\
-html { filter: grayscale(1) contrast(1.12) !important; scroll-behavior: auto !important; }
+html { filter: grayscale(1) contrast(1.12) brightness(0.957) !important; scroll-behavior: auto !important; }
 *, *::before, *::after {
   animation-duration: 0.001s !important; animation-iteration-count: 1 !important;
   transition-duration: 0s !important; transition-delay: 0s !important;

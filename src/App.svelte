@@ -358,7 +358,7 @@
 
 <main>
 	<!-- the page lies over this card; it shows as paper while the page is hidden -->
-	<div class="card" class:hidden={mode !== 'page' || !current} bind:this={card}></div>
+	<div class="card" class:eink class:hidden={mode !== 'page' || !current} bind:this={card}></div>
 
 	{#if mode === 'page' && current}
 		<button class="title" class:loading={loading[current.id]} onclick={editAddress} title={current.title || current.url}>
@@ -501,6 +501,9 @@
 		background: #fff;
 		box-shadow: 0 1px 12px rgba(0, 0, 0, 0.08);
 	}
+
+	/* in e-ink the page sits on the paper itself */
+	.card.eink { background: #F4F4F4; }
 
 	/* kept in the layout so the webview always knows where to go */
 	.card.hidden { visibility: hidden; }
