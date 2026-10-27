@@ -7,7 +7,7 @@ webview per tab; the interface is Svelte.
   FAVO pins the open tab to the left; closing a favourite only unloads it.
 - **Page**: shown in a card with the site as the title and the path under it, between ← and →.
 - **E-ink**: EINK turns every page grey with a little more contrast and stops animations.
-- **Search**: NEW opens it; an address goes straight there, anything else is searched with DuckDuckGo.
+- **Search**: NEW opens it; an address goes straight there, anything else is searched with Google.
 - Keys: ⌘T new tab · ⌘L address · ⌘W close · ⌘D favourite · ⌘[ ⌘] back / forward ·
   ⌘R reload · ⌃Tab next tab · ⌘E e-ink · ⌘I info · right click on a tab for actions
 
