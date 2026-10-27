@@ -1,0 +1,26 @@
+[package]
+name = "resurf"
+version = "0.1.0"
+description = "ReSurf — just the web. A quiet browser in the ReNote style."
+authors = ["Artur Savytskyi"]
+license = ""
+repository = ""
+edition = "2024"
+rust-version = "1.90"
+
+[lib]
+name = "resurf_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.4", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+# `unstable` gives windows several webviews: the UI plus one per tab
+tauri = { version = "2.12.5", features = ["unstable"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6.5"
+objc2-app-kit = { version = "0.3.2", features = ["NSWindow", "NSButton", "NSControl", "NSView", "NSResponder"] }
