@@ -268,7 +268,7 @@
 				e.preventDefault();
 				cancelSearch();
 			} else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !query) {
-				// an empty Search walks the tabs, as ⌘↑ / ⌘↓ do on a page
+				// an empty Search walks the tabs, as ⌥↑ / ⌥↓ do on a page
 				e.preventDefault();
 				cycle(e.key === 'ArrowDown' ? 1 : -1);
 			}
@@ -312,7 +312,7 @@
 		['⌘ D', 'Favourite'],
 		['⌘ [ / ⌘ ]', 'Back / forward'],
 		['⌘ R', 'Reload'],
-		['⌘ ↑ / ⌘ ↓', 'Previous / next tab'],
+		['⌥ ↑ / ⌥ ↓', 'Previous / next tab'],
 		['⌘ E', 'E-ink'],
 		['⌘ I', 'Info'],
 		['Right click', 'Tab actions'],
