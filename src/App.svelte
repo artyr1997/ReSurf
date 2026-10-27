@@ -456,8 +456,6 @@
 	}
 
 	.tab {
-		position: relative;
-		isolation: isolate;
 		width: 42px;
 		height: 42px;
 		flex-shrink: 0;
@@ -473,27 +471,14 @@
 
 	.tab:hover { opacity: 1; }
 
-	/* the open tab is inked with a vertical brushstroke, like the switches,
-	   its icon cut out of it in the paper colour */
-	.tab.active { opacity: 1; }
-
-	.tab.active::before {
-		content: '';
-		position: absolute;
-		inset: -9px -2px;
-		z-index: -1;
-		background:
-			url('/ink/brush-top.svg') center top / 100% auto no-repeat,
-			url('/ink/brush-bottom.svg') center bottom / 100% auto no-repeat,
-			url('/ink/brush-mid-v.svg') center 0.65em / 100% calc(100% - 1.3em) no-repeat;
+	/* the open tab is ringed; a letter drops its own ring so there is only one */
+	.tab.active {
+		opacity: 1;
+		border-color: var(--line);
+		border-radius: 50%;
 	}
 
-	.tab.active img { filter: grayscale(1) invert(1) brightness(0.96); }
-
-	.tab.active .letter {
-		color: var(--bg);
-		border-color: var(--bg);
-	}
+	.tab.active .letter { border-color: transparent; }
 
 	.tab.loading { animation: breathe 1.2s ease-in-out infinite; }
 
