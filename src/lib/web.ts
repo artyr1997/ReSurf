@@ -30,7 +30,7 @@ export interface Bounds {
 export const api = {
 	loadState: () => invoke<string | null>('load_state'),
 	saveState: (json: string) => invoke<void>('save_state', { json }),
-	showTab: (id: number, url: string, bounds: Bounds) => invoke<void>('show_tab', { id, url, bounds }),
+	showTab: (id: number, url: string, bounds: Bounds, focus: boolean) => invoke<void>('show_tab', { id, url, bounds, focus }),
 	hideTabs: () => invoke<void>('hide_tabs'),
 	navigate: (id: number, url: string) => invoke<void>('navigate', { id, url }),
 	closeTab: (id: number) => invoke<void>('close_tab', { id }),

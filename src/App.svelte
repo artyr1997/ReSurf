@@ -54,12 +54,16 @@
 		return () => observer.disconnect();
 	});
 
+	// a tab picked with ⌥ + arrows leaves the keys with the UI, so the next ⌥ + arrow works too;
+	// anything else hands them to the page
+	let pageTakesKeys = true;
+
 	$effect(() => {
 		const b = bounds;
 		const tab = current;
 		if (showing && tab && b) {
 			// the address only matters the first time, when the webview is created
-			api.showTab(tab.id, untrack(() => tab.url), b);
+			api.showTab(tab.id, untrack(() => tab.url), b, pageTakesKeys);
 		} else {
 			api.hideTabs().then(() => {
 				if (mode === 'search') searchInput?.focus();
@@ -97,7 +101,8 @@
 
 	// ── tabs ──
 
-	function activate(id: number) {
+	function activate(id: number, takeKeys = true) {
+		pageTakesKeys = takeKeys;
 		active = id;
 		mode = 'page';
 		popup = 'none';
@@ -181,12 +186,12 @@
 		tab.home = tab.favorite ? tab.url : undefined;
 	}
 
-	function cycle(delta: number) {
+	function cycle(delta: number, takeKeys = true) {
 		const order = [...favorites, ...others];
 		if (!order.length) return;
 		const at = order.findIndex(t => t.id === active);
 		const next = at < 0 ? (delta > 0 ? 0 : order.length - 1) : (at + delta + order.length) % order.length;
-		activate(order[next].id);
+		activate(order[next].id, takeKeys);
 	}
 
 	// the tab last open in each column, to come back to when switching sides
@@ -199,7 +204,7 @@
 		const list = side === 'favorites' ? favorites : others;
 		if (!list.length) return;
 		const tab = list.find(t => t.id === lastIn[side]) ?? list[0];
-		activate(tab.id);
+		activate(tab.id, false);
 	}
 
 	// the open tab is kept in sight when the column scrolls
@@ -247,10 +252,8 @@
 		else if (id === 'address') editAddress();
 		else if (id === 'close') closeTab(active);
 		else if (id === 'favo') toggleFavorite(active);
-		else if (id === 'next-tab' || id === 'tab-down') cycle(1);
-		else if (id === 'prev-tab' || id === 'tab-up') cycle(-1);
-		else if (id === 'to-favorites') toColumn('favorites');
-		else if (id === 'to-others') toColumn('others');
+		else if (id === 'next-tab') cycle(1);
+		else if (id === 'prev-tab') cycle(-1);
 		else if (id === 'back' && active !== null) api.back(active);
 		else if (id === 'forward' && active !== null) api.forward(active);
 		else if (id === 'reload' && active !== null) api.reload(active);
@@ -260,6 +263,14 @@
 
 	// keys that reach the UI (a page keeps its own; ⌘ shortcuts come from the menu)
 	function handleKeydown(e: KeyboardEvent) {
+		// ⌥ + arrows walk the tabs, only while the UI has the keys: on a page they stay the page's
+		if (e.altKey && popup === 'none' && e.key.startsWith('Arrow')) {
+			e.preventDefault();
+			if (e.key === 'ArrowDown') cycle(1, false);
+			else if (e.key === 'ArrowUp') cycle(-1, false);
+			else toColumn(e.key === 'ArrowLeft' ? 'favorites' : 'others');
+			return;
+		}
 		if (popup !== 'none') {
 			if (e.key === 'Escape') {
 				e.preventDefault();
@@ -283,9 +294,9 @@
 				e.preventDefault();
 				cancelSearch();
 			} else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !query) {
-				// an empty Search walks the tabs, as ⌥↑ / ⌥↓ do on a page
+				// an empty Search walks the tabs, as ⌥↑ / ⌥↓ do
 				e.preventDefault();
-				cycle(e.key === 'ArrowDown' ? 1 : -1);
+				cycle(e.key === 'ArrowDown' ? 1 : -1, false);
 			}
 		}
 	}

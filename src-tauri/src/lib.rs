@@ -179,7 +179,7 @@ fn save_state(state: State<AppState>, json: String) -> CmdResult<()> {
 
 /// Shows tab `id` over the page card (creating its webview the first time) and hides the rest.
 #[tauri::command]
-fn show_tab(app: AppHandle, id: u64, url: String, bounds: Bounds) -> CmdResult<()> {
+fn show_tab(app: AppHandle, id: u64, url: String, bounds: Bounds, focus: bool) -> CmdResult<()> {
     for webview in tabs(&app).filter(|w| w.label() != label(id)) {
         let _ = webview.hide();
     }
@@ -191,7 +191,10 @@ fn show_tab(app: AppHandle, id: u64, url: String, bounds: Bounds) -> CmdResult<(
         }
         None => create_tab(&app, id, Url::parse(&url).map_err(err)?, &bounds)?,
     };
-    webview.set_focus().map_err(err)
+    if focus {
+        webview.set_focus().map_err(err)?;
+    }
+    Ok(())
 }
 
 /// Start page and popups: no page on top of the UI, and the UI gets the keyboard.
@@ -315,10 +318,6 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
             &item("close", "Close Tab", "CmdOrCtrl+W")?,
             &item("favo", "Favourite", "CmdOrCtrl+D")?,
             &sep()?,
-            &item("tab-down", "Next Tab", "Alt+Down")?,
-            &item("tab-up", "Previous Tab", "Alt+Up")?,
-            &item("to-favorites", "Favourites", "Alt+Left")?,
-            &item("to-others", "Other Tabs", "Alt+Right")?,
             &item("next-tab", "Next Tab", "Ctrl+Tab")?,
             &item("prev-tab", "Previous Tab", "Ctrl+Shift+Tab")?,
         ],
