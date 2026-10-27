@@ -189,6 +189,19 @@
 		activate(order[next].id);
 	}
 
+	// the tab last open in each column, to come back to when switching sides
+	let lastIn: { favorites: number | null; others: number | null } = { favorites: null, others: null };
+	$effect(() => {
+		if (current) lastIn[current.favorite ? 'favorites' : 'others'] = current.id;
+	});
+
+	function toColumn(side: 'favorites' | 'others') {
+		const list = side === 'favorites' ? favorites : others;
+		if (!list.length) return;
+		const tab = list.find(t => t.id === lastIn[side]) ?? list[0];
+		activate(tab.id);
+	}
+
 	// the open tab is kept in sight when the column scrolls
 	$effect(() => {
 		if (active === null || mode !== 'page') return;
@@ -236,6 +249,8 @@
 		else if (id === 'favo') toggleFavorite(active);
 		else if (id === 'next-tab' || id === 'tab-down') cycle(1);
 		else if (id === 'prev-tab' || id === 'tab-up') cycle(-1);
+		else if (id === 'to-favorites') toColumn('favorites');
+		else if (id === 'to-others') toColumn('others');
 		else if (id === 'back' && active !== null) api.back(active);
 		else if (id === 'forward' && active !== null) api.forward(active);
 		else if (id === 'reload' && active !== null) api.reload(active);
@@ -313,6 +328,7 @@
 		['⌘ [ / ⌘ ]', 'Back / forward'],
 		['⌘ R', 'Reload'],
 		['⌥ ↑ / ⌥ ↓', 'Previous / next tab'],
+		['⌥ ← / ⌥ →', 'Favourites / other tabs'],
 		['⌘ E', 'E-ink'],
 		['⌘ I', 'Info'],
 		['Right click', 'Tab actions'],

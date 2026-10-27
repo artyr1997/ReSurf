@@ -317,6 +317,8 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
             &sep()?,
             &item("tab-down", "Next Tab", "Alt+Down")?,
             &item("tab-up", "Previous Tab", "Alt+Up")?,
+            &item("to-favorites", "Favourites", "Alt+Left")?,
+            &item("to-others", "Other Tabs", "Alt+Right")?,
             &item("next-tab", "Next Tab", "Ctrl+Tab")?,
             &item("prev-tab", "Previous Tab", "Ctrl+Shift+Tab")?,
         ],
