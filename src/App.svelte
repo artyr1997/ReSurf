@@ -492,7 +492,7 @@
 		border: 2px solid transparent;
 		padding: 0;
 		opacity: 0.6;
-		cursor: url('/ink/hand.svg'), pointer;
+		cursor: pointer;
 		transition: opacity 200ms ease, border-color 200ms ease;
 	}
 
@@ -569,7 +569,7 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		cursor: url('/ink/hand.svg'), pointer;
+		cursor: pointer;
 	}
 
 	.title.loading { animation: breathe 1.2s ease-in-out infinite; }
@@ -595,7 +595,7 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		cursor: url('/ink/hand.svg'), pointer;
+		cursor: pointer;
 	}
 
 	.turn {
@@ -606,7 +606,7 @@
 		font-size: 26px;
 		line-height: 1;
 		opacity: 0.6;
-		cursor: url('/ink/hand.svg'), pointer;
+		cursor: pointer;
 		transition: opacity 200ms ease;
 	}
 
@@ -656,7 +656,7 @@
 		font-size: 16px;
 		line-height: 1.2;
 		text-align: left;
-		cursor: url('/ink/hand.svg'), pointer;
+		cursor: pointer;
 	}
 
 	.shortcuts {
