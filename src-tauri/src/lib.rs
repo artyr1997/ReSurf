@@ -123,10 +123,32 @@ fn round_corners<R: Runtime>(webview: &Webview<R>) {
     });
 }
 
+/// Pages see ReSurf as the Safari installed on this Mac. A bare WKWebView leaves
+/// "Version/… Safari/…" out of its user agent, and sites like Gmail then call
+/// the browser unsupported.
+fn user_agent() -> &'static str {
+    static AGENT: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    AGENT.get_or_init(|| {
+        let plist = std::fs::read_to_string("/Applications/Safari.app/Contents/Info.plist").unwrap_or_default();
+        let version = safari_version(&plist).unwrap_or("26.0");
+        format!(
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/{version} Safari/605.1.15"
+        )
+    })
+}
+
+fn safari_version(plist: &str) -> Option<&str> {
+    let after = &plist[plist.find("<key>CFBundleShortVersionString</key>")?..];
+    let start = after.find("<string>")? + "<string>".len();
+    let end = after[start..].find("</string>")? + start;
+    Some(after[start..end].trim())
+}
+
 fn create_tab<R: Runtime>(app: &AppHandle<R>, id: u64, url: Url, bounds: &Bounds) -> CmdResult<Webview<R>> {
     let window = app.get_window("main").ok_or("No window")?;
     let (load_app, title_app, open_app) = (app.clone(), app.clone(), app.clone());
     let builder = WebviewBuilder::new(label(id), WebviewUrl::External(url))
+        .user_agent(user_agent())
         .on_page_load(move |webview, payload| {
             let loading = payload.event() == PageLoadEvent::Started;
             let eink = load_app.state::<AppState>().eink.load(Ordering::Relaxed);
@@ -414,7 +436,14 @@ mod tests {
     }
 
     #[test]
-    fn eink_script_switches_the_style() {
+    fn safari_version_is_read_from_the_plist() {
+        let plist = "<key>CFBundleShortVersionString</key>\n\t<string>26.5</string>";
+        assert_eq!(safari_version(plist), Some("26.5"));
+        assert_eq!(safari_version(""), None);
+    }
+
+    #[test]
+        fn eink_script_switches_the_style() {
         assert!(eink_script(true).contains("if (true)"));
         assert!(eink_script(false).contains("if (false)"));
         assert!(eink_script(true).contains("grayscale(1)"));
