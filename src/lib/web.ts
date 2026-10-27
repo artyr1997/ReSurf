@@ -42,9 +42,9 @@ export const api = {
 	copy: (text: string) => invoke<void>('copy_text', { text }),
 };
 
-const SEARCH = 'https://www.google.com/search?q=';
+const SEARCH = 'https://search.brave.com/search?q=';
 
-/** What was typed into Search → an address: a URL as is, a bare domain over https, anything else searched with Google. */
+/** What was typed into Search → an address: a URL as is, a bare domain over https, anything else searched with Brave. */
 export function toUrl(input: string): string {
 	const text = input.trim();
 	if (/^[a-z][a-z0-9+.-]*:\/\//i.test(text) || /^(about|data):/i.test(text)) return text;
