@@ -189,6 +189,12 @@
 		activate(order[next].id);
 	}
 
+	// the open tab is kept in sight when the column scrolls
+	$effect(() => {
+		if (active === null || mode !== 'page') return;
+		tick().then(() => document.querySelector('.tab.active')?.scrollIntoView({ block: 'nearest' }));
+	});
+
 	function toggleEink() {
 		eink = !eink;
 		api.setEink(eink);
@@ -228,8 +234,8 @@
 		else if (id === 'address') editAddress();
 		else if (id === 'close') closeTab(active);
 		else if (id === 'favo') toggleFavorite(active);
-		else if (id === 'next-tab') cycle(1);
-		else if (id === 'prev-tab') cycle(-1);
+		else if (id === 'next-tab' || id === 'tab-down') cycle(1);
+		else if (id === 'prev-tab' || id === 'tab-up') cycle(-1);
 		else if (id === 'back' && active !== null) api.back(active);
 		else if (id === 'forward' && active !== null) api.forward(active);
 		else if (id === 'reload' && active !== null) api.reload(active);
@@ -261,6 +267,10 @@
 			} else if (e.key === 'Escape') {
 				e.preventDefault();
 				cancelSearch();
+			} else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !query) {
+				// an empty Search walks the tabs, as ⌘↑ / ⌘↓ do on a page
+				e.preventDefault();
+				cycle(e.key === 'ArrowDown' ? 1 : -1);
 			}
 		}
 	}
@@ -302,7 +312,7 @@
 		['⌘ D', 'Favourite'],
 		['⌘ [ / ⌘ ]', 'Back / forward'],
 		['⌘ R', 'Reload'],
-		['⌃ Tab', 'Next tab'],
+		['⌘ ↑ / ⌘ ↓', 'Previous / next tab'],
 		['⌘ E', 'E-ink'],
 		['⌘ I', 'Info'],
 		['Right click', 'Tab actions'],
@@ -442,10 +452,12 @@
 		flex-direction: column;
 		align-items: center;
 		gap: 22px;
-		padding: 8px 0;
+		padding: 12px 0;
 	}
 
 	.tab {
+		position: relative;
+		isolation: isolate;
 		width: 42px;
 		height: 42px;
 		flex-shrink: 0;
@@ -461,10 +473,26 @@
 
 	.tab:hover { opacity: 1; }
 
-	/* the open tab gets the box of the boxed buttons */
-	.tab.active {
-		opacity: 1;
-		border-color: var(--line);
+	/* the open tab is inked with a vertical brushstroke, like the switches,
+	   its icon cut out of it in the paper colour */
+	.tab.active { opacity: 1; }
+
+	.tab.active::before {
+		content: '';
+		position: absolute;
+		inset: -9px -2px;
+		z-index: -1;
+		background:
+			url('/ink/brush-top.svg') center top / 100% auto no-repeat,
+			url('/ink/brush-bottom.svg') center bottom / 100% auto no-repeat,
+			url('/ink/brush-mid-v.svg') center 0.65em / 100% calc(100% - 1.3em) no-repeat;
+	}
+
+	.tab.active img { filter: grayscale(1) invert(1) brightness(0.96); }
+
+	.tab.active .letter {
+		color: var(--bg);
+		border-color: var(--bg);
 	}
 
 	.tab.loading { animation: breathe 1.2s ease-in-out infinite; }
