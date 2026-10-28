@@ -5,7 +5,9 @@ webview per tab; the interface is Svelte.
 
 - **Tabs**: favourites run down the left edge, the other open tabs down the right one.
   FAVO pins the open tab to the left; closing a favourite only unloads it.
-- **Page**: shown in a card with the site as the title and the path under it, between ← and →.
+- **Page**: shown in a card with the site above it and the page's title under it, between ← and →.
+- **Video**: ⌘F stretches the page's video, with its player, over the whole page (the window stays
+  as it is); ⌘F again or Esc puts it back.
 - **E-ink**: EINK turns every page grey with a little more contrast and stops animations.
 - **No ads**: EasyList + EasyPrivacy as a WebKit content rule list (like Safari's content blockers):
   requests to ad and tracking servers are not made, and ad slots are hidden. WebKit compiles the
@@ -16,7 +18,7 @@ webview per tab; the interface is Svelte.
   mutes it, runs it to its end and presses Skip.
 - **Search**: NEW opens it; an address goes straight there, anything else is searched with Brave Search.
 - Keys: ⌘T new tab · ⌘L address · ⌘W close · ⌘D favourite · ⌘[ ⌘] back / forward ·
-  ⌘R reload · ⌃Tab next tab · ⌘E e-ink · ⌘I info · right click on a tab for actions
+  ⌘R reload · ⌘F video fills the page · ⌃Tab next tab · ⌘E e-ink · ⌘I info · right click on a tab for actions
 
 ## Run
 

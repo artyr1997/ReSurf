@@ -37,6 +37,7 @@ export const api = {
 	back: (id: number) => invoke<void>('go_back', { id }),
 	forward: (id: number) => invoke<void>('go_forward', { id }),
 	reload: (id: number) => invoke<void>('reload', { id }),
+	fillVideo: (id: number) => invoke<void>('fill_video', { id }),
 	tabUrl: (id: number) => invoke<string | null>('tab_url', { id }),
 	setEink: (on: boolean) => invoke<void>('set_eink', { on }),
 	copy: (text: string) => invoke<void>('copy_text', { text }),

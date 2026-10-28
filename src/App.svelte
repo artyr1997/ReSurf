@@ -257,6 +257,7 @@
 		else if (id === 'back' && active !== null) api.back(active);
 		else if (id === 'forward' && active !== null) api.forward(active);
 		else if (id === 'reload' && active !== null) api.reload(active);
+		else if (id === 'video' && active !== null) api.fillVideo(active);
 		else if (id === 'eink') toggleEink();
 		else if (id === 'info') popup = popup === 'info' ? 'none' : 'info';
 	}
@@ -338,6 +339,7 @@
 		['⌘ D', 'Favourite'],
 		['⌘ [ / ⌘ ]', 'Back / forward'],
 		['⌘ R', 'Reload'],
+		['⌘ F', 'Video fills the page'],
 		['⌥ ↑ / ⌥ ↓', 'Previous / next tab'],
 		['⌥ ← / ⌥ →', 'Favourites / other tabs'],
 		['⌘ E', 'E-ink'],
@@ -408,7 +410,7 @@
 		</button>
 		<div class="pager">
 			<button class="turn" onclick={() => api.back(current!.id)} aria-label="Back" title="Back (⌘[)">←</button>
-			<button class="path" onclick={editAddress} title={current.url}>{path(current.url)}</button>
+			<button class="path" onclick={editAddress} title={current.url}>{current.title || path(current.url)}</button>
 			<button class="turn" onclick={() => api.forward(current!.id)} aria-label="Forward" title="Forward (⌘])">→</button>
 		</div>
 	{:else if ready}
@@ -553,7 +555,7 @@
 	/* kept in the layout so the webview always knows where to go */
 	.card.hidden { visibility: hidden; }
 
-	/* the title and the path sit halfway between the card and the window edge */
+	/* the site and the page's title sit halfway between the card and the window edge */
 	.title,
 	.pager {
 		position: fixed;

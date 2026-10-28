@@ -262,6 +262,8 @@ fn create_tab<R: Runtime>(app: &AppHandle<R>, id: u64, url: Url, bounds: &Bounds
         .user_agent(user_agent())
         // the ads the rule list can't reach (YouTube's): see adblock.js
         .initialization_script_for_all_frames(include_str!("../adblock.js"))
+        // ⌘F: the video fills the page
+        .initialization_script(include_str!("../video.js"))
         .on_page_load(move |webview, payload| {
             let loading = payload.event() == PageLoadEvent::Started;
             let eink = load_app.state::<AppState>().eink.load(Ordering::Relaxed);
@@ -387,6 +389,12 @@ fn reload(app: AppHandle, id: u64) -> CmdResult<()> {
     }
 }
 
+/// ⌘F: the tab's video fills the page, or goes back (video.js).
+#[tauri::command]
+fn fill_video(app: AppHandle, id: u64) -> CmdResult<()> {
+    eval_in(&app, id, "window.__resurfVideo?.()")
+}
+
 /// Where the tab is now; pages that change the address without loading (history.pushState)
 /// don't send a page-load event, so the UI asks.
 #[tauri::command]
@@ -468,6 +476,7 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
             &item("back", "Back", "CmdOrCtrl+[")?,
             &item("forward", "Forward", "CmdOrCtrl+]")?,
             &item("reload", "Reload", "CmdOrCtrl+R")?,
+            &item("video", "Video Fills the Page", "CmdOrCtrl+F")?,
             &sep()?,
             &item("eink", "E-ink", "CmdOrCtrl+E")?,
             &item("info", "Info", "CmdOrCtrl+I")?,
@@ -535,6 +544,7 @@ pub fn run() {
             go_back,
             go_forward,
             reload,
+            fill_video,
             tab_url,
             set_eink,
             copy_text,
