@@ -393,6 +393,11 @@
 </nav>
 <button class="side switch nav-eink" class:ink-mark-v={eink} onclick={toggleEink} title="E-ink (⌘E)">EINK</button>
 
+<!-- a small window: no columns, tabs are walked with ⌥ ↑ / ⌥ ↓ -->
+<button class="corner top-right" onclick={newTab} title="New tab (⌘T)">NEW</button>
+<button class="corner bottom-left" onclick={() => (popup = 'info')} title="Info (⌘I)">INFO</button>
+<button class="corner bottom-right" class:on={eink} onclick={toggleEink} title="E-ink (⌘E)">EINK</button>
+
 <main>
 	<!-- the page lies over this card; it shows as paper while the page is hidden -->
 	<div class="card" class:eink class:hidden={mode !== 'page' || !current} bind:this={card}></div>
@@ -637,6 +642,41 @@
 	.search::placeholder {
 		color: var(--muted);
 		opacity: 0.5;
+	}
+
+	/* ── a small window: the page takes it all, clear of the window controls ── */
+	@media (max-width: 759px), (max-height: 559px) {
+		.column { display: none; }
+
+		.card {
+			top: 44px;
+			bottom: 44px;
+			left: 36px;
+			right: 36px;
+			border-radius: 14px;
+		}
+
+		.title {
+			top: 22px;
+			max-width: calc(100% - 200px);
+			font-size: 16px;
+			line-height: 24px;
+		}
+
+		.pager {
+			bottom: 22px;
+			gap: 1.5rem;
+			max-width: calc(100% - 200px);
+		}
+
+		.path {
+			font-size: 16px;
+			line-height: 24px;
+		}
+
+		.turn { font-size: 20px; }
+
+		.search { width: calc(100% - 72px); }
 	}
 
 	/* ── popups ── */
