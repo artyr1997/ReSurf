@@ -10,7 +10,10 @@ webview per tab; the interface is Svelte.
 - **No ads**: EasyList + EasyPrivacy as a WebKit content rule list (like Safari's content blockers):
   requests to ad and tracking servers are not made, and ad slots are hidden. WebKit compiles the
   list once (a few seconds on the first launch). `python3 scripts/adblock.py` fetches the lists again
-  and rewrites `src-tauri/adblock.json`. Ads served by the site itself (YouTube's, say) still show.
+  and rewrites `src-tauri/adblock.json`. Ads a site serves itself are for `src-tauri/adblock.js`, a
+  script that runs in every page before the site's own: on YouTube it takes the ads out of the
+  player's data, hides the ad slots and the anti-adblock popup, and should an ad play all the same,
+  mutes it, runs it to its end and presses Skip.
 - **Search**: NEW opens it; an address goes straight there, anything else is searched with Brave Search.
 - Keys: ⌘T new tab · ⌘L address · ⌘W close · ⌘D favourite · ⌘[ ⌘] back / forward ·
   ⌘R reload · ⌃Tab next tab · ⌘E e-ink · ⌘I info · right click on a tab for actions

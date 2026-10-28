@@ -260,6 +260,8 @@ fn create_tab<R: Runtime>(app: &AppHandle<R>, id: u64, url: Url, bounds: &Bounds
     let (load_app, title_app, open_app) = (app.clone(), app.clone(), app.clone());
     let builder = WebviewBuilder::new(label(id), WebviewUrl::External(url))
         .user_agent(user_agent())
+        // the ads the rule list can't reach (YouTube's): see adblock.js
+        .initialization_script_for_all_frames(include_str!("../adblock.js"))
         .on_page_load(move |webview, payload| {
             let loading = payload.event() == PageLoadEvent::Started;
             let eink = load_app.state::<AppState>().eink.load(Ordering::Relaxed);
