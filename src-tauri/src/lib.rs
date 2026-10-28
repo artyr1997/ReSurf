@@ -123,6 +123,117 @@ fn round_corners<R: Runtime>(webview: &Webview<R>) {
     });
 }
 
+/// No ads or trackers: EasyList + EasyPrivacy as a WebKit content rule list (adblock.json,
+/// made by scripts/adblock.py), the way Safari's content blockers work. WebKit compiles it once
+/// (a few seconds) and keeps it under an identifier made from the rules, so later launches
+/// only look it up; a new list gets a new identifier and the old one is removed.
+#[cfg(target_os = "macos")]
+mod adblock {
+    use super::{tabs, AppHandle, Runtime, Webview};
+    use block2::RcBlock;
+    use objc2::rc::Retained;
+    use objc2::MainThreadMarker;
+    use objc2_foundation::{NSArray, NSError, NSString};
+    use objc2_web_kit::{WKContentRuleList, WKContentRuleListStore, WKWebView};
+    use std::cell::RefCell;
+
+    const RULES: &str = include_str!("../adblock.json");
+
+    thread_local! {
+        static LIST: RefCell<Option<Retained<WKContentRuleList>>> = const { RefCell::new(None) };
+    }
+
+    fn identifier() -> String {
+        // FNV-1a: the same rules give the same name in every build
+        let hash = RULES.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ b as u64).wrapping_mul(0x100_0000_01b3));
+        format!("ads-{hash:016x}")
+    }
+
+    /// At launch (on the main thread): find the compiled list, or compile it.
+    pub fn prepare<R: Runtime>(app: &AppHandle<R>) {
+        let Some(mtm) = MainThreadMarker::new() else { return };
+        // SAFETY: main thread; WebKit calls the completion handlers on the main thread too.
+        let Some(store) = (unsafe { WKContentRuleListStore::defaultStore(mtm) }) else { return };
+        let id = NSString::from_str(&identifier());
+        let (app, compile_store, compile_id) = (app.clone(), store.clone(), id.clone());
+        let found = RcBlock::new(move |list: *mut WKContentRuleList, _: *mut NSError| {
+            // SAFETY: WebKit hands over a live list or null.
+            if let Some(list) = unsafe { Retained::retain(list) } {
+                return ready(&app, list, false);
+            }
+            let app = app.clone();
+            let compiled = RcBlock::new(move |list: *mut WKContentRuleList, error: *mut NSError| {
+                // SAFETY: as above.
+                match unsafe { Retained::retain(list) } {
+                    Some(list) => ready(&app, list, true),
+                    None => eprintln!("ReSurf: the ad blocker's rules did not compile: {:?}", unsafe { error.as_ref() }),
+                }
+            });
+            let rules = NSString::from_str(RULES);
+            // SAFETY: valid strings and block; main thread.
+            unsafe {
+                compile_store.compileContentRuleListForIdentifier_encodedContentRuleList_completionHandler(
+                    Some(&compile_id),
+                    Some(&rules),
+                    Some(&compiled),
+                )
+            };
+        });
+        // SAFETY: as above.
+        unsafe { store.lookUpContentRuleListForIdentifier_completionHandler(Some(&id), Some(&found)) };
+        remove_old(&store);
+    }
+
+    /// Lists compiled from earlier rules.
+    fn remove_old(store: &Retained<WKContentRuleListStore>) {
+        let current = identifier();
+        let store_ = store.clone();
+        let done = RcBlock::new(move |ids: *mut NSArray<NSString>| {
+            // SAFETY: WebKit hands over a live array or null.
+            let Some(ids) = (unsafe { ids.as_ref() }) else { return };
+            for id in ids.iter() {
+                let name = id.to_string();
+                if name.starts_with("ads-") && name != current {
+                    let ignore = RcBlock::new(|_: *mut NSError| {});
+                    // SAFETY: valid string and block; main thread.
+                    unsafe { store_.removeContentRuleListForIdentifier_completionHandler(Some(&id), Some(&ignore)) };
+                }
+            }
+        });
+        // SAFETY: as above.
+        unsafe { store.getAvailableContentRuleListIdentifiers(Some(&done)) };
+    }
+
+    /// The list is there: every open tab gets it (and reloads, if it was only just compiled
+    /// and the tabs have loaded their pages with the ads meanwhile).
+    fn ready<R: Runtime>(app: &AppHandle<R>, list: Retained<WKContentRuleList>, reload: bool) {
+        LIST.with(|l| *l.borrow_mut() = Some(list));
+        for tab in tabs(app) {
+            attach(&tab);
+            if reload {
+                let _ = tab.reload();
+            }
+        }
+    }
+
+    /// A tab gets the list (until it's ready, nothing: `ready` catches up).
+    pub fn attach<R: Runtime>(webview: &Webview<R>) {
+        let _ = webview.with_webview(|platform| {
+            let view = platform.inner() as *const WKWebView;
+            LIST.with(|l| {
+                if let (Some(list), Some(view)) = (l.borrow().as_ref(), unsafe { view.as_ref() }) {
+                    // SAFETY: `inner()` is the tab's live WKWebView; with_webview runs on the main thread.
+                    unsafe {
+                        let rules = view.configuration().userContentController();
+                        rules.removeContentRuleList(list);
+                        rules.addContentRuleList(list);
+                    }
+                }
+            });
+        });
+    }
+}
+
 /// Pages see ReSurf as the Safari installed on this Mac. A bare WKWebView leaves
 /// "Version/… Safari/…" out of its user agent, and sites like Gmail then call
 /// the browser unsupported.
@@ -177,7 +288,10 @@ fn create_tab<R: Runtime>(app: &AppHandle<R>, id: u64, url: Url, bounds: &Bounds
     let size = LogicalSize::new(bounds.width.max(1.0), bounds.height.max(1.0));
     let webview = window.add_child(builder, LogicalPosition::new(bounds.x, bounds.y), size).map_err(err)?;
     #[cfg(target_os = "macos")]
-    round_corners(&webview);
+    {
+        round_corners(&webview);
+        adblock::attach(&webview);
+    }
     Ok(webview)
 }
 
@@ -401,8 +515,11 @@ pub fn run() {
             app.on_menu_event(|app, event| to_ui(app, "menu", event.id().0.clone()));
 
             #[cfg(target_os = "macos")]
-            if let Some(window) = app.get_webview_window("main") {
-                hide_native_window_buttons(&window);
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    hide_native_window_buttons(&window);
+                }
+                adblock::prepare(app.handle());
             }
             Ok(())
         })

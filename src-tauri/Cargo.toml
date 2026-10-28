@@ -24,3 +24,7 @@ tauri = { version = "2.12.5", features = ["unstable"] }
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6.5"
 objc2-app-kit = { version = "0.3.2", features = ["NSWindow", "NSButton", "NSControl", "NSView", "NSResponder"] }
+# the ad blocker: a WebKit content rule list on every tab (src/lib.rs, mod adblock)
+objc2-web-kit = { version = "0.3.2", default-features = false, features = ["std", "objc2-app-kit", "block2", "WKContentRuleList", "WKContentRuleListStore", "WKUserContentController", "WKWebView", "WKWebViewConfiguration"] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSString", "NSError", "NSArray"] }
+block2 = "0.6.2"

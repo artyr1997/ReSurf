@@ -7,6 +7,10 @@ webview per tab; the interface is Svelte.
   FAVO pins the open tab to the left; closing a favourite only unloads it.
 - **Page**: shown in a card with the site as the title and the path under it, between ← and →.
 - **E-ink**: EINK turns every page grey with a little more contrast and stops animations.
+- **No ads**: EasyList + EasyPrivacy as a WebKit content rule list (like Safari's content blockers):
+  requests to ad and tracking servers are not made, and ad slots are hidden. WebKit compiles the
+  list once (a few seconds on the first launch). `python3 scripts/adblock.py` fetches the lists again
+  and rewrites `src-tauri/adblock.json`. Ads served by the site itself (YouTube's, say) still show.
 - **Search**: NEW opens it; an address goes straight there, anything else is searched with Brave Search.
 - Keys: ⌘T new tab · ⌘L address · ⌘W close · ⌘D favourite · ⌘[ ⌘] back / forward ·
   ⌘R reload · ⌃Tab next tab · ⌘E e-ink · ⌘I info · right click on a tab for actions
