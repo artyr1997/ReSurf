@@ -7,6 +7,7 @@
 	const MARK = 'data-resurf-video';
 	const PATH = 'data-resurf-video-path';
 	const INNER = 'data-resurf-video-inner';
+	const COVER = 'data-resurf-video-cover';
 	const css = `
 		[${MARK}] {
 			position: fixed !important; inset: 0 !important; width: 100vw !important; height: 100vh !important;
@@ -20,6 +21,8 @@
 			margin: 0 !important; padding: 0 !important; transform: none !important;
 		}
 		video[${MARK}], video[${INNER}] { object-fit: contain !important; }
+		/* nearly the page's shape: a few pixels cut off rather than black bars along the edges */
+		video[${COVER}] { object-fit: cover !important; }
 		/* what would hold a fixed element inside its parent, or under the page */
 		[${PATH}] {
 			transform: none !important; filter: none !important; perspective: none !important;
@@ -71,13 +74,14 @@
 		box.setAttribute(MARK, '');
 		for (let p = video; p && p !== box; p = p.parentElement) p.setAttribute(INNER, '');
 		for (let p = box.parentElement; p && p !== document.documentElement; p = p.parentElement) p.setAttribute(PATH, '');
+		fit();
 		// players lay their video out again when the window changes
 		window.dispatchEvent(new Event('resize'));
 	}
 
 	function off() {
 		for (const el of document.querySelectorAll(`[${MARK}], [${PATH}], [${INNER}]`)) {
-			for (const name of [MARK, PATH, INNER]) el.removeAttribute(name);
+			for (const name of [MARK, PATH, INNER, COVER]) el.removeAttribute(name);
 		}
 		style?.remove();
 		window.dispatchEvent(new Event('resize'));
@@ -85,7 +89,21 @@
 
 	const filling = () => !!document.querySelector(`[${MARK}]`);
 
+	// cover when the video's shape is within 12% of the page's; a tall or square video keeps its bars
+	function fit() {
+		for (const video of document.querySelectorAll(`video[${MARK}], video[${INNER}]`)) {
+			const shape = video.videoWidth / video.videoHeight;
+			const page = innerWidth / innerHeight;
+			const close = shape > 0 && Math.abs(Math.log(shape / page)) < Math.log(1.12);
+			video.toggleAttribute(COVER, close);
+		}
+	}
+
 	window.__resurfVideo = () => (filling() ? off() : on());
+
+	// the window resized, or the next video (another shape) began
+	window.addEventListener('resize', () => filling() && fit());
+	document.addEventListener('loadedmetadata', () => filling() && fit(), true);
 
 	document.addEventListener(
 		'keydown',
