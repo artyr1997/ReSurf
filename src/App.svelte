@@ -545,12 +545,12 @@
 		left: calc(6.25% + 80px);
 		right: calc(6.25% + 80px);
 		border-radius: 22px;
-		background: #fff;
+		background: var(--card);
 		box-shadow: 0 1px 12px rgba(0, 0, 0, 0.08);
 	}
 
 	/* in e-ink the page sits on the paper itself */
-	.card.eink { background: #F4F4F4; }
+	.card.eink { background: var(--bg); }
 
 	/* kept in the layout so the webview always knows where to go */
 	.card.hidden { visibility: hidden; }
