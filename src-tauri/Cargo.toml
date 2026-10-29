@@ -19,7 +19,7 @@ tauri-build = { version = "2.7.4", features = [] }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 # `unstable` gives windows several webviews: the UI plus one per tab
-tauri = { version = "2.12.5", features = ["unstable"] }
+tauri = { version = "2.12.5", features = ["unstable", "macos-private-api"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6.5"
