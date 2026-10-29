@@ -282,3 +282,10 @@ body::after {
 	pointer-events: none;
 	z-index: 2147483647;
 }
+
+/* at night the rim marks the window in use: the others have none */
+@media (prefers-color-scheme: dark) {
+	html.blurred body::after {
+		border-color: transparent;
+	}
+}
