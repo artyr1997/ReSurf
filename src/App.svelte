@@ -8,7 +8,7 @@
 	import WindowControls from './lib/WindowControls.svelte';
 	import Popup from './lib/Popup.svelte';
 	import { scrollFade } from './lib/scrollFade';
-	import { api, toUrl, host, path, letter, isSearch, type Tab, type Saved, type Bounds } from './lib/web';
+	import { api, toUrl, host, path, letter, isSearch, searchQuery, type Tab, type Saved, type Bounds } from './lib/web';
 
 	type Mode = 'page' | 'search';
 	type PopupKind = 'none' | 'actions' | 'info';
@@ -39,7 +39,8 @@
 	let bounds: Bounds | null = $state(null);
 	let popup = $state<PopupKind>('none');
 	let showing = $derived(mode === 'page' && popup === 'none' && !!current);
-	// search results lie on the paper itself: no card, no site above, no title below (see search.js)
+	// search results lie on the paper itself: no card, what was searched above in place of the site,
+	// no title below (see search.js)
 	let results = $derived(mode === 'page' && !!current && isSearch(current.url));
 
 	function measure() {
@@ -407,8 +408,8 @@
 	<div class="card" class:eink class:bare={results} class:hidden={mode !== 'page' || !current} bind:this={card}></div>
 
 	{#if mode === 'page' && current}
-		<button class="title" class:gone={results} class:loading={loading[current.id]} onclick={editAddress} title={current.title || current.url}>
-			{host(current.url)}
+		<button class="title" class:loading={loading[current.id]} onclick={editAddress} title={current.title || current.url}>
+			{results ? searchQuery(current.url) : host(current.url)}
 		</button>
 		<div class="pager">
 			<button class="turn" onclick={() => api.back(current!.id)} aria-label="Back" title="Back (⌘[)">←</button>
@@ -557,7 +558,6 @@
 	/* search results: the page is clear (lib.rs), the paper shows through */
 	.card.bare { background: transparent; box-shadow: none; }
 
-	.title.gone,
 	.path.gone { visibility: hidden; }
 
 	/* kept in the layout so the webview always knows where to go */

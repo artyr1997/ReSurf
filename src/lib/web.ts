@@ -61,6 +61,11 @@ export function isSearch(url: string): boolean {
 	return !!u && /(^|\.)google\.[a-z.]+$/.test(u.hostname) && u.pathname === '/search' && ['14', '2', '7'].includes(u.searchParams.get('udm') ?? '');
 }
 
+/** What was searched (without the BLG kind's " inurl:blog"): shown where the site would be */
+export function searchQuery(url: string): string {
+	return (parse(url)?.searchParams.get('q') ?? '').replace(/ inurl:blog$/, '');
+}
+
 function parse(url: string): URL | null {
 	try {
 		return new URL(url);

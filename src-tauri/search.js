@@ -1,4 +1,4 @@
-// Google's results in the ReSurf look: the query, then the results as a quiet list (title, site, a line),
+// Google's results in the ReSurf look: the results as a quiet list (title, site, a line; ReSurf shows the query above),
 // or the pictures as a grid, on the paper, without the ads, the panels and Google's own header. Four
 // buttons at the sides switch what is searched: ALL (web pages), IMG, VID, BLG (pages under a /blog
 // address: Google has no blogs of its own any more). ↑ / ↓ choose one (inked), Enter opens it.
@@ -58,9 +58,6 @@
 		#resurf-search::-webkit-scrollbar { display: none; }
 		#resurf-search > div { max-width: 680px; margin: 0 auto; padding: 48px 0 64px; }
 		#resurf-search.re-pictures > div { max-width: none; }
-		#resurf-search h1 {
-			margin: 0 0 40px; font: 400 24px/32px 'Kurale', Georgia, serif; text-align: center;
-		}
 		#resurf-search ol { list-style: none; margin: 0; padding: 0; }
 		#resurf-search li { margin: 0 0 28px; }
 		#resurf-search a.re-result { display: block; color: inherit; text-decoration: none; outline: none; }
@@ -284,11 +281,9 @@
 		const main = document.createElement('main');
 		main.id = 'resurf-search';
 		if (kind === 'img') main.className = 're-pictures';
-		const h1 = document.createElement('h1');
-		h1.textContent = query;
 		const items = kind === 'img' ? grid(results) : list(results);
 		const column = document.createElement('div');
-		column.append(h1, items);
+		column.append(items);
 
 		// pages: ten at a time, counted by Google's start= (pictures come as one long page)
 		if (kind !== 'img') {
