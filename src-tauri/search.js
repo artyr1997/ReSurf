@@ -395,6 +395,10 @@
 		}).observe(document.documentElement, { childList: true, subtree: true });
 		document.documentElement.classList.add('resurf-search');
 		document.title = query;
+		// Google puts the cursor in its search box, now hidden: out of it, so the keys reach the page
+		if (document.activeElement && document.activeElement !== document.body && !main.contains(document.activeElement)) {
+			document.activeElement.blur();
+		}
 
 		const all = [...items.children];
 		let chosen = -1;
@@ -405,7 +409,10 @@
 			all[chosen].scrollIntoView({ block: 'nearest' });
 		};
 		addEventListener('keydown', (e) => {
-			if (e.metaKey || e.ctrlKey || e.altKey || /^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName)) return;
+			// Google's own (hidden) search box may hold the focus: only a field of ours would keep the keys
+			if (e.metaKey || e.ctrlKey || e.altKey) return;
+			const field = document.activeElement;
+			if (/^(INPUT|TEXTAREA)$/.test(field?.tagName) && main.contains(field)) return;
 			// ↑ / ↓ a result, ← / → a page, A / I / V / F a kind (the buttons at the sides)
 			const kindKey = { a: 'all', i: 'img', v: 'vid', f: 'fcs' }[e.key.toLowerCase()];
 			if (e.key === 'ArrowDown') choose(chosen + 1);
@@ -416,6 +423,8 @@
 			else if (kindKey && !e.shiftKey && kindKey !== kind) location.href = as(kindKey);
 			else return;
 			e.preventDefault();
+			// and not Google's: it would put them into its hidden search box
+			e.stopImmediatePropagation();
 		}, true);
 	}
 
