@@ -1,7 +1,8 @@
 // Google's results in the ReSurf look: the results as a quiet list (title, site, a line; ReSurf shows the query above),
 // or the pictures as a grid, on the paper, without the ads, the panels and Google's own header. Four
-// buttons at the sides switch what is searched: ALL (web pages), IMG, VID, BLG (pages under a /blog
-// address: Google has no blogs of its own any more). ↑ / ↓ choose one (inked), Enter opens it.
+// buttons at the sides switch what is searched: ALL (web pages), IMG, VID; ALT shows the same results as
+// Google draws them (marked resurf=google, which this script and the card in App.svelte leave alone).
+// ↑ / ↓ choose one (inked), Enter opens it.
 // Google's markup changes often and its class names mean nothing, so the results are found by what they
 // are (a link out of Google with a heading in it; a picture that points out of Google), and when too few
 // turn up the page is left as Google made it. lib.rs puts the brush shapes in for the __BRUSH_…__ marks.
@@ -12,8 +13,8 @@
 	const isGoogle = /(^|\.)google\.[a-z.]+$/.test(location.hostname);
 	if (!isGoogle || location.pathname !== '/search') return;
 	const params = new URLSearchParams(location.search);
-	const asked = params.get('q') || '';
-	if (!asked) return;
+	const query = params.get('q') || '';
+	if (!query || params.get('resurf') === 'google') return;
 
 	// the "Web" filter (udm=14): just the links, no AI answer or panels; Google's other tabs (tbm) are left alone
 	if (!params.has('udm') && !params.has('tbm')) {
@@ -21,12 +22,9 @@
 		location.replace(location.pathname + '?' + params.toString());
 		return;
 	}
-	const BLOG = ' inurl:blog';
 	const KINDS = { 14: 'all', 2: 'img', 7: 'vid' };
-	let kind = KINDS[params.get('udm')];
+	const kind = KINDS[params.get('udm')];
 	if (!kind) return;
-	if (kind === 'all' && asked.endsWith(BLOG)) kind = 'blg';
-	const query = kind === 'blg' ? asked.slice(0, -BLOG.length) : asked;
 
 	const svg = (s) => `url("data:image/svg+xml,${encodeURIComponent(s)}")`;
 	const left = svg(`__BRUSH_LEFT__`);
@@ -97,7 +95,7 @@
 		#resurf-search .re-grid img { display: block; height: 150px; width: auto; max-width: 320px; object-fit: cover; border-radius: 8px; }
 		#resurf-search .re-grid a:hover { opacity: 0.8; }
 		#resurf-search .re-grid li.re-on a { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
-		/* ALL / IMG / VID / BLG: vertical words at the sides, as the switches in the Re apps (.side.switch) */
+		/* ALL / IMG / VID / ALT: vertical words at the sides, as the switches in the Re apps (.side.switch) */
 		#resurf-kinds a {
 			position: fixed; z-index: 1; width: 42px; padding: 0.55em 0 0;
 			font: 400 20px/32px 'Noto Sans JP', sans-serif; letter-spacing: 0.6em;
@@ -109,7 +107,7 @@
 		#resurf-kinds a.re-all { left: 64px; top: 40px; }
 		#resurf-kinds a.re-img { left: 64px; bottom: 40px; }
 		#resurf-kinds a.re-vid { right: 64px; top: 40px; }
-		#resurf-kinds a.re-blg { right: 64px; bottom: 40px; }
+		#resurf-kinds a.re-alt { right: 64px; bottom: 40px; }
 		/* PREV / NEXT: boxes halfway down the sides, as the Re apps' (.side.boxed) */
 		#resurf-kinds a.re-box {
 			top: 50%; transform: translateY(-50%); min-height: 164px; padding: 18px 0 calc(18px - 0.6em);
@@ -245,24 +243,29 @@
 		return [u.hostname.replace(/^www\./, ''), ...parts].join(' › ');
 	}
 
-	// the same search as another kind (from its first page)
+	// the same search as another kind (from its first page); ALT: this page as Google draws it
+	// (all of it, AI answer and panels too, for web pages)
 	function as(other) {
 		const p = new URLSearchParams(params);
-		p.delete('start');
-		p.set('q', other === 'blg' ? query + BLOG : query);
-		p.set('udm', { all: '14', blg: '14', img: '2', vid: '7' }[other]);
+		if (other === 'alt') {
+			if (kind === 'all') p.delete('udm');
+			p.set('resurf', 'google');
+		} else {
+			p.delete('start');
+			p.set('udm', { all: '14', img: '2', vid: '7' }[other]);
+		}
 		return location.pathname + '?' + p.toString();
 	}
 
 	function kinds() {
 		const box = document.createElement('div');
 		box.id = 'resurf-kinds';
-		for (const k of ['all', 'img', 'vid', 'blg']) {
+		for (const k of ['all', 'img', 'vid', 'alt']) {
 			const a = document.createElement('a');
 			a.className = 're-' + k + (k === kind ? ' re-on' : '');
 			a.href = as(k);
 			a.textContent = k.toUpperCase();
-			a.title = { all: 'All', img: 'Images', vid: 'Videos', blg: 'Blogs' }[k];
+			a.title = { all: 'All', img: 'Images', vid: 'Videos', alt: 'As Google shows it' }[k];
 			box.append(a);
 		}
 		return box;

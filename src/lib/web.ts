@@ -58,12 +58,14 @@ export function toUrl(input: string): string {
 /** Google's web, image and video results (udm 14 / 2 / 7): search.js draws them on the paper, without the card around the page */
 export function isSearch(url: string): boolean {
 	const u = parse(url);
-	return !!u && /(^|\.)google\.[a-z.]+$/.test(u.hostname) && u.pathname === '/search' && ['14', '2', '7'].includes(u.searchParams.get('udm') ?? '');
+	return !!u && /(^|\.)google\.[a-z.]+$/.test(u.hostname) && u.pathname === '/search' && ['14', '2', '7'].includes(u.searchParams.get('udm') ?? '')
+		// ALT: Google's own page, in the card as any other
+		&& u.searchParams.get('resurf') !== 'google';
 }
 
-/** What was searched (without the BLG kind's " inurl:blog"): shown where the site would be */
+/** What was searched: shown where the site would be */
 export function searchQuery(url: string): string {
-	return (parse(url)?.searchParams.get('q') ?? '').replace(/ inurl:blog$/, '');
+	return parse(url)?.searchParams.get('q') ?? '';
 }
 
 function parse(url: string): URL | null {
