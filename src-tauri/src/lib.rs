@@ -260,6 +260,81 @@ fn safari_version(plist: &str) -> Option<&str> {
     Some(after[start..end].trim())
 }
 
+/// The UI lies under the tabs' webviews, and WebKit hands every webview the mouse's moves over its
+/// whole rectangle: over a page the UI would set its arrow while the page sets its hand or I-beam,
+/// turn about at each move (a flickering cursor). So a webview's mouseMoved: (the class all of
+/// them share) now passes on only the moves that land on that webview, as the window sees it.
+#[cfg(target_os = "macos")]
+mod one_cursor {
+    use objc2::encode::{Encode, Encoding};
+    use objc2::ffi;
+    use objc2::runtime::{AnyClass, AnyObject, Imp, Sel};
+    use objc2::{msg_send, sel};
+    use std::sync::OnceLock;
+
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    struct Point {
+        x: f64,
+        y: f64,
+    }
+
+    // SAFETY: the layout of CGPoint
+    unsafe impl Encode for Point {
+        const ENCODING: Encoding = Encoding::Struct("CGPoint", &[f64::ENCODING, f64::ENCODING]);
+    }
+
+    type MouseMoved = unsafe extern "C-unwind" fn(&AnyObject, Sel, *mut AnyObject);
+    static ORIGINAL: OnceLock<MouseMoved> = OnceLock::new();
+
+    unsafe extern "C-unwind" fn mouse_moved(this: &AnyObject, cmd: Sel, event: *mut AnyObject) {
+        // SAFETY: AppKit's own calls, on the main thread, with the event it is handling
+        unsafe {
+            let window: *mut AnyObject = msg_send![this, window];
+            if !window.is_null() && !event.is_null() {
+                let content: *mut AnyObject = msg_send![window, contentView];
+                if !content.is_null() {
+                    let at: Point = msg_send![event, locationInWindow];
+                    // hitTest: wants the point in the content view's superview (the window's frame)
+                    let frame: *mut AnyObject = msg_send![content, superview];
+                    let at: Point =
+                        if frame.is_null() { at } else { msg_send![frame, convertPoint: at, fromView: std::ptr::null_mut::<AnyObject>()] };
+                    let hit: *mut AnyObject = msg_send![content, hitTest: at];
+                    if !hit.is_null() {
+                        let mine: bool = msg_send![hit, isDescendantOf: this];
+                        if !mine {
+                            return;
+                        }
+                    }
+                }
+            }
+            if let Some(original) = ORIGINAL.get() {
+                original(this, cmd, event);
+            }
+        }
+    }
+
+    /// `view`: any of the app's webviews (they all share one class).
+    pub fn install(view: *mut AnyObject) {
+        if view.is_null() || ORIGINAL.get().is_some() {
+            return;
+        }
+        // SAFETY: the runtime's own calls; the replaced method keeps its type (v@:@)
+        unsafe {
+            let class = ffi::object_getClass(view) as *mut AnyClass;
+            let name = sel!(mouseMoved:);
+            let method = ffi::class_getInstanceMethod(class, name);
+            if method.is_null() {
+                return;
+            }
+            let Some(original) = ffi::method_getImplementation(method) else { return };
+            let _ = ORIGINAL.set(std::mem::transmute::<Imp, MouseMoved>(original));
+            let ours: Imp = std::mem::transmute::<MouseMoved, Imp>(mouse_moved);
+            ffi::class_replaceMethod(class, name, ours, ffi::method_getTypeEncoding(method));
+        }
+    }
+}
+
 /// FCS, the focus search: resurf://localhost/focus?q=…&page=… asks Marginalia (the small, text web)
 /// and answers with a page holding what it found as `window.__resurfFocus`; search.js draws it
 /// as it draws Google's results. curl does the asking (it comes with macOS), off the main thread.
@@ -666,6 +741,9 @@ pub fn run() {
             {
                 if let Some(window) = app.get_webview_window("main") {
                     round_window(&window);
+                    let _ = window.with_webview(|platform| {
+                        one_cursor::install(platform.inner() as *mut objc2::runtime::AnyObject)
+                    });
                     reveal(&window.as_ref().window(), std::time::Duration::from_secs(3));
                 }
                 adblock::prepare(app.handle());
