@@ -65,7 +65,8 @@
 			font-family: 'Kurale', Georgia, serif; -webkit-font-smoothing: antialiased;
 		}
 		#resurf-search::-webkit-scrollbar { display: none; }
-		#resurf-search > div { max-width: 680px; margin: 0 auto; padding: 48px 0 64px; }
+		/* room at the sides for the chosen title's brushstroke, which reaches past its letters */
+		#resurf-search > div { max-width: 680px; margin: 0 auto; padding: 48px 16px 64px; }
 		#resurf-search.re-pictures > div { max-width: none; }
 		#resurf-search ol { list-style: none; margin: 0; padding: 0; }
 		#resurf-search li { margin: 0 0 28px; }
