@@ -58,7 +58,7 @@
 		html.resurf-search body > :not(#resurf-search):not(#resurf-kinds) { display: none !important; }
 		/* the list scrolls in a box that fades out at its top and bottom, as the lists in the Re apps do */
 		#resurf-search {
-			position: fixed; inset: 0 130px; overflow-y: auto; scrollbar-width: none;
+			position: fixed; inset: 0 110px; overflow-y: auto; scrollbar-width: none;
 			-webkit-mask-image: linear-gradient(to bottom, transparent, #000 40px, #000 calc(100% - 40px), transparent);
 			font-family: 'Kurale', Georgia, serif; -webkit-font-smoothing: antialiased;
 		}
@@ -106,10 +106,10 @@
 			-webkit-font-smoothing: antialiased;
 		}
 		#resurf-kinds a:hover { opacity: 1; }
-		#resurf-kinds a.re-all { left: 64px; top: 40px; }
-		#resurf-kinds a.re-img { left: 64px; bottom: 40px; }
-		#resurf-kinds a.re-vid { right: 64px; top: 40px; }
-		#resurf-kinds a.re-alt { right: 64px; bottom: 40px; }
+		#resurf-kinds a.re-all { left: 44px; top: 40px; }
+		#resurf-kinds a.re-img { left: 44px; bottom: 40px; }
+		#resurf-kinds a.re-vid { right: 44px; top: 40px; }
+		#resurf-kinds a.re-alt { right: 44px; bottom: 40px; }
 		/* PREV / NEXT: boxes halfway down the sides, as the Re apps' (.side.boxed) */
 		#resurf-kinds a.re-box {
 			top: 50%; transform: translateY(-50%); min-height: 164px; padding: 18px 0 calc(18px - 0.6em);
@@ -118,8 +118,8 @@
 		}
 		#resurf-kinds a.re-box:hover { background: var(--text); border-color: var(--text); color: var(--bg); }
 		#resurf-kinds a.re-box:not([href]) { opacity: 0.3; pointer-events: none; }
-		#resurf-kinds a.re-prev { left: 64px; }
-		#resurf-kinds a.re-next { right: 64px; }
+		#resurf-kinds a.re-prev { left: 44px; }
+		#resurf-kinds a.re-next { right: 44px; }
 		/* the one shown: inked with the brushstroke drawn top to bottom */
 		#resurf-kinds a.re-on {
 			opacity: 1; color: var(--bg); background: var(--ink);
