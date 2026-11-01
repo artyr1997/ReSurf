@@ -40,7 +40,7 @@
 	let popup = $state<PopupKind>('none');
 	let showing = $derived(mode === 'page' && popup === 'none' && !!current);
 	// search results lie on the paper itself: no card, what was searched above in place of the site,
-	// no title below (see search.js)
+	// nothing below: the pages turn with PREV / NEXT at the sides (see search.js)
 	let results = $derived(mode === 'page' && !!current && isSearch(current.url));
 
 	function measure() {
@@ -411,9 +411,9 @@
 		<button class="title" class:loading={loading[current.id]} onclick={editAddress} title={current.title || current.url}>
 			{results ? searchQuery(current.url) : host(current.url)}
 		</button>
-		<div class="pager">
+		<div class="pager" class:gone={results}>
 			<button class="turn" onclick={() => api.back(current!.id)} aria-label="Back" title="Back (⌘[)">←</button>
-			<button class="path" class:gone={results} onclick={editAddress} title={current.url}>{current.title || path(current.url)}</button>
+			<button class="path" onclick={editAddress} title={current.url}>{current.title || path(current.url)}</button>
 			<button class="turn" onclick={() => api.forward(current!.id)} aria-label="Forward" title="Forward (⌘])">→</button>
 		</div>
 	{:else if ready}
@@ -558,7 +558,7 @@
 	/* search results: the page is clear (lib.rs), the paper shows through */
 	.card.bare { background: transparent; box-shadow: none; }
 
-	.path.gone { visibility: hidden; }
+	.pager.gone { visibility: hidden; }
 
 	/* kept in the layout so the webview always knows where to go */
 	.card.hidden { visibility: hidden; }
