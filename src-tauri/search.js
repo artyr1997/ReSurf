@@ -43,12 +43,12 @@
 		@import url('https://fonts.googleapis.com/css2?family=Kurale&family=Noto+Sans+JP:wght@300;400&display=swap');
 		html.resurf-hold { visibility: hidden !important; }
 		html.resurf-search {
-			--bg: #F4F4F4; --text: #474747; --ink: #4a4a4a; color-scheme: light;
+			--bg: #F4F4F4; --text: #474747; --line: #57585A; --ink: #4a4a4a; color-scheme: light;
 			--mark-left: ${left}; --mark-mid: ${mid}; --mark-right: ${right};
 		}
 		@media (prefers-color-scheme: dark) {
 			html.resurf-search {
-				--bg: #1d1d1d; --text: #808080; --ink: #767676; color-scheme: dark;
+				--bg: #1d1d1d; --text: #808080; --line: #747474; --ink: #767676; color-scheme: dark;
 				--mark-left: ${darkLeft}; --mark-mid: ${darkMid}; --mark-right: ${darkRight};
 			}
 		}
@@ -97,12 +97,6 @@
 		#resurf-search .re-grid img { display: block; height: 150px; width: auto; max-width: 320px; object-fit: cover; border-radius: 8px; }
 		#resurf-search .re-grid a:hover { opacity: 0.8; }
 		#resurf-search .re-grid li.re-on a { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
-		#resurf-search nav { display: flex; justify-content: space-between; margin-top: 48px; }
-		#resurf-search nav a {
-			font: 400 14px/20px 'Noto Sans JP', sans-serif; letter-spacing: 0.6em; color: inherit;
-			text-decoration: none; opacity: 0.75;
-		}
-		#resurf-search nav a:hover { opacity: 1; }
 		/* ALL / IMG / VID / BLG: vertical words at the sides, as the switches in the Re apps (.side.switch) */
 		#resurf-kinds a {
 			position: fixed; z-index: 1; width: 42px; padding: 0.55em 0 0;
@@ -116,6 +110,16 @@
 		#resurf-kinds a.re-img { left: 64px; bottom: 40px; }
 		#resurf-kinds a.re-vid { right: 64px; top: 40px; }
 		#resurf-kinds a.re-blg { right: 64px; bottom: 40px; }
+		/* PREV / NEXT: boxes halfway down the sides, as the Re apps' (.side.boxed) */
+		#resurf-kinds a.re-box {
+			top: 50%; transform: translateY(-50%); min-height: 164px; padding: 18px 0 calc(18px - 0.6em);
+			justify-content: center; border: 2px solid var(--line); opacity: 1;
+			transition: background 200ms ease, color 200ms ease;
+		}
+		#resurf-kinds a.re-box:hover { background: var(--text); border-color: var(--text); color: var(--bg); }
+		#resurf-kinds a.re-box:not([href]) { opacity: 0.3; pointer-events: none; }
+		#resurf-kinds a.re-prev { left: 64px; }
+		#resurf-kinds a.re-next { right: 64px; }
 		/* the one shown: inked with the brushstroke drawn top to bottom */
 		#resurf-kinds a.re-on {
 			opacity: 1; color: var(--bg); background: var(--ink);
@@ -328,6 +332,8 @@
 		const column = document.createElement('div');
 		column.append(items);
 
+		main.append(column);
+		const side = kinds();
 		// pages: ten at a time, counted by Google's start= (pictures come as one long page)
 		if (kind !== 'img') {
 			const start = Number(params.get('start')) || 0;
@@ -336,19 +342,18 @@
 				n > 0 ? p.set('start', String(n)) : p.delete('start');
 				return location.pathname + '?' + p.toString();
 			};
-			const nav = document.createElement('nav');
 			const prev = document.createElement('a');
+			prev.className = 're-box re-prev';
 			prev.textContent = 'PREV';
+			prev.title = 'Previous page';
 			if (start > 0) prev.href = page(Math.max(0, start - 10));
-			else prev.style.visibility = 'hidden';
 			const next = document.createElement('a');
+			next.className = 're-box re-next';
 			next.textContent = 'NEXT';
+			next.title = 'Next page';
 			next.href = page(start + 10);
-			nav.append(prev, next);
-			column.append(nav);
+			side.append(prev, next);
 		}
-		main.append(column);
-		const side = kinds();
 		document.body.append(main, side);
 		// Google's scripts may redraw the body later: ours stays
 		new MutationObserver(() => {
