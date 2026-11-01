@@ -100,7 +100,7 @@ fn tabs<R: Runtime>(app: &AppHandle<R>) -> impl Iterator<Item = Webview<R>> {
     app.webviews().into_iter().filter(|(l, _)| tab_id(l).is_some()).map(|(_, w)| w)
 }
 
-/// Rounded corners like the cards in the other Re apps.
+/// Rounded corners like the cards in the other Re apps, and no background of its own.
 #[cfg(target_os = "macos")]
 fn round_corners<R: Runtime>(webview: &Webview<R>) {
     use objc2::msg_send;
@@ -119,6 +119,11 @@ fn round_corners<R: Runtime>(webview: &Webview<R>) {
                 let _: () = msg_send![layer, setCornerRadius: 22.0f64];
                 let _: () = msg_send![layer, setMasksToBounds: true];
             }
+            // clear where the page paints nothing: the card behind shows (and, for search
+            // results, the paper: the card goes bare)
+            let no: *mut AnyObject = msg_send![objc2::class!(NSNumber), numberWithBool: false];
+            let key = objc2_foundation::NSString::from_str("drawsBackground");
+            let _: () = msg_send![view, setValue: no, forKey: &*key];
         }
     });
 }
@@ -528,6 +533,11 @@ fn round_window(window: &tauri::WebviewWindow) {
                 let _: () = msg_send![layer, setCornerRadius: 12.0f64];
                 let _: () = msg_send![layer, setMasksToBounds: true];
             }
+            // clear where the page paints nothing: the card behind shows (and, for search
+            // results, the paper: the card goes bare)
+            let no: *mut AnyObject = msg_send![objc2::class!(NSNumber), numberWithBool: false];
+            let key = objc2_foundation::NSString::from_str("drawsBackground");
+            let _: () = msg_send![view, setValue: no, forKey: &*key];
         }
     });
 }

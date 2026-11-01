@@ -22,9 +22,6 @@
 	if (params.get('udm') !== '14') return;
 
 	const svg = (s) => `url("data:image/svg+xml,${encodeURIComponent(s)}")`;
-	const noise = svg(
-		'<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0.09 0"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>'
-	);
 	const left = svg(`__BRUSH_LEFT__`);
 	const mid = svg(`__BRUSH_MID__`);
 	const right = svg(`__BRUSH_RIGHT__`);
@@ -36,15 +33,20 @@
 		@media (prefers-color-scheme: dark) {
 			html.resurf-search { --bg: #1d1d1d; --text: #808080; --ink: #767676; color-scheme: dark; }
 		}
+		/* clear: the page lies on ReSurf's own paper (no card around it, see App.svelte) */
 		html.resurf-search, html.resurf-search body {
-			margin: 0 !important; padding: 0 !important; min-height: 100% !important;
-			background: var(--bg) ${noise} repeat !important; color: var(--text) !important;
+			margin: 0 !important; padding: 0 !important; height: 100% !important; overflow: hidden !important;
+			background: transparent !important; color: var(--text) !important;
 		}
 		html.resurf-search body > :not(#resurf-search) { display: none !important; }
+		/* the list scrolls in a box that fades out at its top and bottom, as the lists in the Re apps do */
 		#resurf-search {
-			max-width: 680px; margin: 0 auto; padding: 56px 32px 72px;
+			position: fixed; inset: 0; overflow-y: auto; scrollbar-width: none;
+			-webkit-mask-image: linear-gradient(to bottom, transparent, #000 40px, #000 calc(100% - 40px), transparent);
 			font-family: 'Kurale', Georgia, serif; -webkit-font-smoothing: antialiased;
 		}
+		#resurf-search::-webkit-scrollbar { display: none; }
+		#resurf-search > div { max-width: 680px; margin: 0 auto; padding: 48px 32px 64px; }
 		#resurf-search h1 {
 			margin: 0 0 40px; font: 400 24px/32px 'Kurale', Georgia, serif; text-align: center;
 		}
@@ -188,7 +190,9 @@
 		next.href = page(start + 10);
 		nav.append(prev, next);
 
-		main.append(h1, list, nav);
+		const column = document.createElement('div');
+		column.append(h1, list, nav);
+		main.append(column);
 		document.body.append(main);
 		// Google's scripts may redraw the body later: ours stays
 		new MutationObserver(() => main.isConnected || document.body.append(main)).observe(document.documentElement, { childList: true, subtree: true });

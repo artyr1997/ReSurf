@@ -55,6 +55,12 @@ export function toUrl(input: string): string {
 	return SEARCH + encodeURIComponent(text);
 }
 
+/** Google's Web results (what Search opens): search.js draws them on the paper, without the card around the page */
+export function isSearch(url: string): boolean {
+	const u = parse(url);
+	return !!u && /(^|\.)google\.[a-z.]+$/.test(u.hostname) && u.pathname === '/search' && u.searchParams.get('udm') === '14';
+}
+
 function parse(url: string): URL | null {
 	try {
 		return new URL(url);

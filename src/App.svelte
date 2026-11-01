@@ -8,7 +8,7 @@
 	import WindowControls from './lib/WindowControls.svelte';
 	import Popup from './lib/Popup.svelte';
 	import { scrollFade } from './lib/scrollFade';
-	import { api, toUrl, host, path, letter, type Tab, type Saved, type Bounds } from './lib/web';
+	import { api, toUrl, host, path, letter, isSearch, type Tab, type Saved, type Bounds } from './lib/web';
 
 	type Mode = 'page' | 'search';
 	type PopupKind = 'none' | 'actions' | 'info';
@@ -39,6 +39,8 @@
 	let bounds: Bounds | null = $state(null);
 	let popup = $state<PopupKind>('none');
 	let showing = $derived(mode === 'page' && popup === 'none' && !!current);
+	// search results lie on the paper itself: no card, no site above, no title below (see search.js)
+	let results = $derived(mode === 'page' && !!current && isSearch(current.url));
 
 	function measure() {
 		if (!card) return;
@@ -402,15 +404,15 @@
 
 <main>
 	<!-- the page lies over this card; it shows as paper while the page is hidden -->
-	<div class="card" class:eink class:hidden={mode !== 'page' || !current} bind:this={card}></div>
+	<div class="card" class:eink class:bare={results} class:hidden={mode !== 'page' || !current} bind:this={card}></div>
 
 	{#if mode === 'page' && current}
-		<button class="title" class:loading={loading[current.id]} onclick={editAddress} title={current.title || current.url}>
+		<button class="title" class:gone={results} class:loading={loading[current.id]} onclick={editAddress} title={current.title || current.url}>
 			{host(current.url)}
 		</button>
 		<div class="pager">
 			<button class="turn" onclick={() => api.back(current!.id)} aria-label="Back" title="Back (⌘[)">←</button>
-			<button class="path" onclick={editAddress} title={current.url}>{current.title || path(current.url)}</button>
+			<button class="path" class:gone={results} onclick={editAddress} title={current.url}>{current.title || path(current.url)}</button>
 			<button class="turn" onclick={() => api.forward(current!.id)} aria-label="Forward" title="Forward (⌘])">→</button>
 		</div>
 	{:else if ready}
@@ -551,6 +553,12 @@
 
 	/* in e-ink the page sits on the paper itself */
 	.card.eink { background: var(--bg); }
+
+	/* search results: the page is clear (lib.rs), the paper shows through */
+	.card.bare { background: transparent; box-shadow: none; }
+
+	.title.gone,
+	.path.gone { visibility: hidden; }
 
 	/* kept in the layout so the webview always knows where to go */
 	.card.hidden { visibility: hidden; }
