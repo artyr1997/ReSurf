@@ -95,29 +95,36 @@
 		} catch {}
 		return a.href;
 	};
-	const text = (el) => (el?.innerText || '').replace(/\s+/g, ' ').trim();
+	// textContent: innerText is empty while the page is held hidden
+	const text = (el) => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 
 	function find() {
-		const root = document.querySelector('#search, #rso, #main') || document.body;
+		const root = document.querySelector('#rso') || document.querySelector('#search') || document.querySelector('#main') || document.body;
+		const heads = [...root.querySelectorAll('h3, [role="heading"][aria-level="3"]')];
 		const seen = new Set();
 		const found = [];
-		for (const a of root.querySelectorAll('a[href]')) {
-			const href = target(a);
-			const heading = a.querySelector('h3, [role="heading"]');
-			if (!heading || !isOut(href) || seen.has(href)) continue;
+		for (const heading of heads) {
 			const title = text(heading);
-			if (!title) continue;
-			// the result: the biggest block around the link that holds no other result's heading
-			let box = a;
-			while (box.parentElement && box.parentElement !== root && box.parentElement.querySelectorAll('a h3, a [role="heading"]').length <= 1) {
+			// its link: the one around it, or else the first one out of Google in the block it sits in
+			let a = heading.closest('a[href]');
+			for (let up = heading.parentElement; !a && up && up !== root; up = up.parentElement) {
+				a = [...up.querySelectorAll('a[href]')].find((l) => isOut(target(l))) || null;
+			}
+			if (!a || !title) continue;
+			const href = target(a);
+			if (!isOut(href) || seen.has(href)) continue;
+			// the result: the biggest block around it that holds no other result's heading
+			let box = a.contains(heading) ? a : heading;
+			while (box.parentElement && box.parentElement !== root && heads.filter((h) => box.parentElement.contains(h)).length <= 1) {
 				box = box.parentElement;
 			}
-			// its line: the longest piece of text in it that isn't the link
+			// its line: the longest piece of text in it that isn't the link or the heading
 			let line = '';
 			for (const el of box.querySelectorAll('div, span')) {
-				if (el.contains(a) || a.contains(el) || el.querySelector('div')) continue;
+				if (el.contains(heading) || a.contains(el) || heading.contains(el) || el.querySelector('div, style, script')) continue;
+				if (el.closest('[aria-hidden="true"]') || getComputedStyle(el).display === 'none') continue;
 				const t = text(el);
-				if (t.length > line.length && t !== title) line = t;
+				if (t.length > line.length && t !== title && !/^https?:\/\//.test(t)) line = t;
 			}
 			seen.add(href);
 			found.push({ href, title, line });
@@ -183,6 +190,8 @@
 
 		main.append(h1, list, nav);
 		document.body.append(main);
+		// Google's scripts may redraw the body later: ours stays
+		new MutationObserver(() => main.isConnected || document.body.append(main)).observe(document.documentElement, { childList: true, subtree: true });
 		document.documentElement.classList.add('resurf-search');
 		document.title = query;
 
@@ -204,16 +213,37 @@
 		}, true);
 	}
 
+	// Google draws its results with scripts, some after the page has loaded: look each time the page
+	// changes, and draw ours once there are three or more and no new ones for a moment
 	let done = false;
+	let count = 0;
+	let settle = 0;
 	function finish() {
 		if (done) return;
 		done = true;
+		watch.disconnect();
 		const results = find();
 		if (results.length >= 3) render(results);
 		document.documentElement.classList.remove('resurf-hold');
 	}
-	if (document.readyState === 'loading') addEventListener('DOMContentLoaded', finish);
-	else finish();
+	function look() {
+		if (done || !document.body) return;
+		const n = find().length;
+		if (n !== count) {
+			count = n;
+			clearTimeout(settle);
+			if (n >= 3) settle = setTimeout(finish, 300);
+		}
+	}
+	let queued = false;
+	const watch = new MutationObserver(() => {
+		if (queued) return;
+		queued = true;
+		setTimeout(() => ((queued = false), look()), 50);
+	});
+	watch.observe(document.documentElement, { childList: true, subtree: true });
+	addEventListener('DOMContentLoaded', look);
+	addEventListener('load', () => setTimeout(look, 100));
 	// never a blank page for long, whatever Google sends
-	setTimeout(finish, 3000);
+	setTimeout(finish, 4000);
 })();
