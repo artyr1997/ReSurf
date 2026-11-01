@@ -32,6 +32,9 @@
 	const left = svg(`__BRUSH_LEFT__`);
 	const mid = svg(`__BRUSH_MID__`);
 	const right = svg(`__BRUSH_RIGHT__`);
+	const darkLeft = svg(`__DARK_LEFT__`);
+	const darkMid = svg(`__DARK_MID__`);
+	const darkRight = svg(`__DARK_RIGHT__`);
 	const top = svg(`__BRUSH_TOP__`);
 	const midV = svg(`__BRUSH_MID_V__`);
 	const bottom = svg(`__BRUSH_BOTTOM__`);
@@ -39,9 +42,15 @@
 	const css = `
 		@import url('https://fonts.googleapis.com/css2?family=Kurale&family=Noto+Sans+JP:wght@300;400&display=swap');
 		html.resurf-hold { visibility: hidden !important; }
-		html.resurf-search { --bg: #F4F4F4; --text: #474747; --ink: #4a4a4a; color-scheme: light; }
+		html.resurf-search {
+			--bg: #F4F4F4; --text: #474747; --ink: #4a4a4a; color-scheme: light;
+			--mark-left: ${left}; --mark-mid: ${mid}; --mark-right: ${right};
+		}
 		@media (prefers-color-scheme: dark) {
-			html.resurf-search { --bg: #1d1d1d; --text: #808080; --ink: #767676; color-scheme: dark; }
+			html.resurf-search {
+				--bg: #1d1d1d; --text: #808080; --ink: #767676; color-scheme: dark;
+				--mark-left: ${darkLeft}; --mark-mid: ${darkMid}; --mark-right: ${darkRight};
+			}
 		}
 		/* clear: the page lies on ReSurf's own paper (no card around it, see App.svelte) */
 		html.resurf-search, html.resurf-search body {
@@ -70,12 +79,16 @@
 			letter-spacing: 0.08em; opacity: 0.6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 		}
 		#resurf-search .re-line { margin: 6px 0 0; font-size: 15px; line-height: 23px; opacity: 0.8; }
+		#resurf-search .re-words { display: block; min-width: 0; }
+		#resurf-search a.re-result:has(.re-still) { display: flex; gap: 20px; align-items: flex-start; }
+		#resurf-search .re-still { flex: none; width: 176px; height: 99px; object-fit: cover; border-radius: 8px; margin-top: 4px; }
 		#resurf-search a.re-result:hover .re-title { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
-		/* the chosen one: the ink brushstroke over its title, the letters cut out of it in the paper's colour */
+		/* the chosen one: the ink brushstroke over its title, the letters cut out of it in the paper's colour;
+		   drawn as the Re apps draw it (.ink-mark), so a title on two lines gets a stroke on each */
 		#resurf-search li.re-on .re-title {
-			color: var(--bg); text-decoration: none; background: var(--ink);
-			-webkit-mask: ${left} left center / auto 100% no-repeat, ${right} right center / auto 100% no-repeat,
-				${mid} 0.65em center / calc(100% - 1.3em) 100% no-repeat;
+			color: var(--bg); text-decoration: none;
+			background: var(--mark-left) left center / auto 100% no-repeat, var(--mark-right) right center / auto 100% no-repeat,
+				var(--mark-mid) 0.65em center / calc(100% - 1.3em) 100% no-repeat;
 		}
 		/* pictures: rows of the same height, as many as fit */
 		#resurf-search .re-grid { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin: 0; padding: 0; list-style: none; }
@@ -167,9 +180,27 @@
 				if (t.length > line.length && t !== title && !/^https?:\/\//.test(t)) line = t;
 			}
 			seen.add(href);
-			found.push({ href, title, line });
+			found.push({ href, title, line, still: kind === 'vid' ? still(href, box) : '' });
 		}
 		return found;
+	}
+
+	// a video's picture: YouTube's own from its address, or else the biggest thumbnail Google shows with it
+	function still(href, box) {
+		try {
+			const u = new URL(href);
+			const id = /(^|\.)youtube\.com$/.test(u.hostname) ? u.searchParams.get('v') || u.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{6,})/)?.[1]
+				: u.hostname === 'youtu.be' ? u.pathname.slice(1) : null;
+			if (id) return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+		} catch {}
+		let best = '';
+		let size = 0;
+		for (const img of box.querySelectorAll('img')) {
+			const src = img.currentSrc || img.src || '';
+			const w = Math.max(img.getBoundingClientRect().width, img.naturalWidth || 0);
+			if (/^(data:image\/(jpeg|png|webp)|https:)/.test(src) && w >= 60 && w > size) [best, size] = [src, w];
+		}
+		return best;
 	}
 
 	// pictures: Google's thumbnails (inline data or encrypted-tbn), each with the page it comes from
@@ -246,13 +277,25 @@
 			const where = document.createElement('span');
 			where.className = 're-site';
 			where.textContent = site(r.href);
-			a.append(title, where);
+			const words = document.createElement('span');
+			words.className = 're-words';
+			words.append(title, where);
 			if (r.line) {
 				const p = document.createElement('p');
 				p.className = 're-line';
 				p.textContent = r.line;
-				a.append(p);
+				words.append(p);
 			}
+			// videos: the picture to the left of the words
+			if (r.still) {
+				const img = document.createElement('img');
+				img.className = 're-still';
+				img.src = r.still;
+				img.alt = '';
+				img.onerror = () => img.remove();
+				a.append(img);
+			}
+			a.append(words);
 			li.append(a);
 			ol.append(li);
 		}

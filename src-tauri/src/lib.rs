@@ -271,6 +271,9 @@ fn search_script() -> &'static str {
             .replace("__BRUSH_TOP__", include_str!("../../public/ink/brush-top.svg").trim())
             .replace("__BRUSH_MID_V__", include_str!("../../public/ink/brush-mid-v.svg").trim())
             .replace("__BRUSH_BOTTOM__", include_str!("../../public/ink/brush-bottom.svg").trim())
+            .replace("__DARK_LEFT__", include_str!("../../public/ink/dark/brush-left.svg").trim())
+            .replace("__DARK_MID__", include_str!("../../public/ink/dark/brush-mid.svg").trim())
+            .replace("__DARK_RIGHT__", include_str!("../../public/ink/dark/brush-right.svg").trim())
     })
 }
 
