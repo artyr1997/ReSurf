@@ -334,26 +334,25 @@
 
 		main.append(column);
 		const side = kinds();
-		// pages: ten at a time, counted by Google's start= (pictures come as one long page)
-		if (kind !== 'img') {
-			const start = Number(params.get('start')) || 0;
-			const page = (n) => {
-				const p = new URLSearchParams(params);
-				n > 0 ? p.set('start', String(n)) : p.delete('start');
-				return location.pathname + '?' + p.toString();
-			};
-			const prev = document.createElement('a');
-			prev.className = 're-box re-prev';
-			prev.textContent = 'PREV';
-			prev.title = 'Previous page';
-			if (start > 0) prev.href = page(Math.max(0, start - 10));
-			const next = document.createElement('a');
-			next.className = 're-box re-next';
-			next.textContent = 'NEXT';
-			next.title = 'Next page';
-			next.href = page(start + 10);
-			side.append(prev, next);
-		}
+		// pages, counted by Google's start=: ten results at a time, or as many pictures as came
+		const step = kind === 'img' ? Math.max(10, results.length) : 10;
+		const start = Number(params.get('start')) || 0;
+		const page = (n) => {
+			const p = new URLSearchParams(params);
+			n > 0 ? p.set('start', String(n)) : p.delete('start');
+			return location.pathname + '?' + p.toString();
+		};
+		const prev = document.createElement('a');
+		prev.className = 're-box re-prev';
+		prev.textContent = 'PREV';
+		prev.title = 'Previous page';
+		if (start > 0) prev.href = page(Math.max(0, start - step));
+		const next = document.createElement('a');
+		next.className = 're-box re-next';
+		next.textContent = 'NEXT';
+		next.title = 'Next page';
+		next.href = page(start + step);
+		side.append(prev, next);
 		document.body.append(main, side);
 		// Google's scripts may redraw the body later: ours stays
 		new MutationObserver(() => {
