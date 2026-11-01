@@ -2,7 +2,8 @@
 // or the pictures as a grid, on the paper, without the ads, the panels and Google's own header. Four
 // buttons at the sides switch what is searched: ALL (web pages), IMG, VID, and FCS, the focus search:
 // the same query in Marginalia, the small, text web (resurf://localhost/focus, made by lib.rs with the
-// results in window.__resurfFocus). ↑ / ↓ choose one (inked), Enter opens it.
+// results in window.__resurfFocus). ↑ / ↓ choose one (inked), Enter opens it; ← / → turn the page,
+// A / I / V / F pick the kind (the only way in a small window, where the buttons give way).
 // Google's markup changes often and its class names mean nothing, so the results are found by what they
 // are (a link out of Google with a heading in it; a picture that points out of Google), and when too few
 // turn up the page is left as Google made it. lib.rs puts the brush shapes in for the __BRUSH_…__ marks.
@@ -122,6 +123,11 @@
 		#resurf-kinds a.re-box:not([href]) { opacity: 0.3; pointer-events: none; }
 		#resurf-kinds a.re-prev { left: 44px; }
 		#resurf-kinds a.re-next { right: 44px; }
+		/* a small window (ReSurf's, less its margins): no buttons, the keys do it (A / I / V / F, ← / →) */
+		@media (max-width: 687px), (max-height: 471px) {
+			#resurf-kinds { display: none; }
+			#resurf-search { inset: 0 16px; }
+		}
 		/* the one shown: inked with the brushstroke drawn top to bottom */
 		#resurf-kinds a.re-on {
 			opacity: 1; color: var(--bg); background: var(--ink);
@@ -399,10 +405,14 @@
 		};
 		addEventListener('keydown', (e) => {
 			if (e.metaKey || e.ctrlKey || e.altKey || /^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName)) return;
-			const sideways = kind === 'img';
-			if (e.key === 'ArrowDown' || (sideways && e.key === 'ArrowRight')) choose(chosen + 1);
-			else if (e.key === 'ArrowUp' || (sideways && e.key === 'ArrowLeft')) choose(chosen - 1);
+			// ↑ / ↓ a result, ← / → a page, A / I / V / F a kind (the buttons at the sides)
+			const kindKey = { a: 'all', i: 'img', v: 'vid', f: 'fcs' }[e.key.toLowerCase()];
+			if (e.key === 'ArrowDown') choose(chosen + 1);
+			else if (e.key === 'ArrowUp') choose(chosen - 1);
 			else if (e.key === 'Enter' && chosen >= 0) location.href = all[chosen].querySelector('a').href;
+			else if (e.key === 'ArrowLeft' && prevAt) location.href = prevAt;
+			else if (e.key === 'ArrowRight' && nextAt) location.href = nextAt;
+			else if (kindKey && !e.shiftKey && kindKey !== kind) location.href = as(kindKey);
 			else return;
 			e.preventDefault();
 		}, true);
