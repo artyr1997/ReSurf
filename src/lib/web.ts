@@ -43,9 +43,10 @@ export const api = {
 	copy: (text: string) => invoke<void>('copy_text', { text }),
 };
 
-const SEARCH = 'https://search.brave.com/search?q=';
+// Google's Web filter (udm=14): just the links, which src-tauri/search.js redraws in the ReSurf look
+const SEARCH = 'https://www.google.com/search?udm=14&q=';
 
-/** What was typed into Search → an address: a URL as is, a bare domain over https, anything else searched with Brave. */
+/** What was typed into Search → an address: a URL as is, a bare domain over https, anything else searched with Google. */
 export function toUrl(input: string): string {
 	const text = input.trim();
 	if (/^[a-z][a-z0-9+.-]*:\/\//i.test(text) || /^(about|data):/i.test(text)) return text;

@@ -452,7 +452,7 @@
 			{/each}
 		</div>
 		<div class="pop-divider"></div>
-		<p class="pop-footer">WebKit · Brave Search · no history kept</p>
+		<p class="pop-footer">WebKit · Google Search · no history kept</p>
 	</Popup>
 {/if}
 

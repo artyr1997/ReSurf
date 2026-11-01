@@ -255,6 +255,17 @@ fn safari_version(plist: &str) -> Option<&str> {
     Some(after[start..end].trim())
 }
 
+/// search.js with the ink brushstroke's three pieces (public/ink) put in.
+fn search_script() -> &'static str {
+    static SCRIPT: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    SCRIPT.get_or_init(|| {
+        include_str!("../search.js")
+            .replace("__BRUSH_LEFT__", include_str!("../../public/ink/brush-left.svg").trim())
+            .replace("__BRUSH_MID__", include_str!("../../public/ink/brush-mid.svg").trim())
+            .replace("__BRUSH_RIGHT__", include_str!("../../public/ink/brush-right.svg").trim())
+    })
+}
+
 fn create_tab<R: Runtime>(app: &AppHandle<R>, id: u64, url: Url, bounds: &Bounds) -> CmdResult<Webview<R>> {
     let window = app.get_window("main").ok_or("No window")?;
     let (load_app, title_app, open_app) = (app.clone(), app.clone(), app.clone());
@@ -264,6 +275,8 @@ fn create_tab<R: Runtime>(app: &AppHandle<R>, id: u64, url: Url, bounds: &Bounds
         .initialization_script_for_all_frames(include_str!("../adblock.js"))
         // ⌘F: the video fills the page
         .initialization_script(include_str!("../video.js"))
+        // Google's results in the ReSurf look
+        .initialization_script(search_script())
         .on_page_load(move |webview, payload| {
             let loading = payload.event() == PageLoadEvent::Started;
             let eink = load_app.state::<AppState>().eink.load(Ordering::Relaxed);
