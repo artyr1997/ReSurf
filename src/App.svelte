@@ -458,7 +458,7 @@
 
 <style>
 	/* ── side buttons ── */
-	.nav-new { left: calc(6.25% - 28px); top: calc(6.25% + 8px); width: 42px; }
+	.nav-new { left: calc(6.25% - 28px); top: calc(6.25% + 8px); width: 42px; padding-top: 0.55em; }
 	.nav-info { left: calc(6.25% - 28px); bottom: 6.25%; width: 42px; }
 	.nav-favo { right: calc(6.25% - 28px); top: calc(6.25% + 8px); }
 	.nav-eink { right: calc(6.25% - 28px); bottom: 6.25%; }
