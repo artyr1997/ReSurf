@@ -97,6 +97,8 @@
 		#resurf-search .re-grid li.re-on a { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
 		/* ALL / IMG / VID / ALT: vertical words at the sides, as the switches in the Re apps (.side.switch) */
 		#resurf-kinds a {
+			/* border-box, as everything in the Re apps (Google's page has its own idea) */
+			box-sizing: border-box; margin: 0;
 			position: fixed; z-index: 1; width: 42px; padding: 0.55em 0 0;
 			font: 400 20px/32px 'Noto Sans JP', sans-serif; letter-spacing: 0.6em;
 			writing-mode: vertical-rl; text-orientation: upright; display: flex; align-items: center;
