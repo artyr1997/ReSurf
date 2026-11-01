@@ -260,6 +260,40 @@ fn safari_version(plist: &str) -> Option<&str> {
     Some(after[start..end].trim())
 }
 
+/// FCS, the focus search: resurf://localhost/focus?q=…&page=… asks Marginalia (the small, text web)
+/// and answers with a page holding what it found as `window.__resurfFocus`; search.js draws it
+/// as it draws Google's results. curl does the asking (it comes with macOS), off the main thread.
+fn focus_page(uri: &str) -> Vec<u8> {
+    let asked = Url::parse(uri).ok();
+    let param = |key: &str| {
+        asked.as_ref().and_then(|u| u.query_pairs().find(|(k, _)| k == key).map(|(_, v)| v.into_owned()))
+    };
+    let query = param("q").unwrap_or_default();
+    let page: u32 = param("page").and_then(|p| p.parse().ok()).unwrap_or(1).max(1);
+
+    let mut api = Url::parse("https://api.marginalia.nu/public/search/").expect("a fixed address");
+    if let Ok(mut path) = api.path_segments_mut() {
+        path.pop_if_empty().push(&query);
+    }
+    api.query_pairs_mut().append_pair("count", "20").append_pair("page", &page.to_string());
+    let found = std::process::Command::new("/usr/bin/curl")
+        .args(["-s", "-f", "-m", "25", api.as_str()])
+        .output()
+        .ok()
+        .filter(|out| out.status.success())
+        .and_then(|out| serde_json::from_slice::<serde_json::Value>(&out.stdout).ok())
+        .unwrap_or_else(|| serde_json::json!({ "error": "Marginalia didn't answer." }));
+
+    // inside a <script>: no "</" may close it early
+    let data = found.to_string().replace("</", "<\\/");
+    let title = serde_json::to_string(&query).unwrap_or_default().replace("</", "<\\/");
+    format!(
+        "<!doctype html><html><head><meta charset=\"utf-8\"><script>window.__resurfFocus = {data}; \
+         document.title = {title};</script></head><body></body></html>"
+    )
+    .into_bytes()
+}
+
 /// search.js with the ink brushstroke's pieces (public/ink), across and down, put in.
 fn search_script() -> &'static str {
     static SCRIPT: std::sync::OnceLock<String> = std::sync::OnceLock::new();
@@ -607,6 +641,18 @@ fn window_ready(webview: tauri::Webview) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .register_asynchronous_uri_scheme_protocol("resurf", |_ctx, request, responder| {
+            let uri = request.uri().to_string();
+            std::thread::spawn(move || {
+                let page = if uri.contains("/focus") { focus_page(&uri) } else { Vec::new() };
+                let response = tauri::http::Response::builder()
+                    .header("Content-Type", "text/html; charset=utf-8")
+                    .body(page);
+                if let Ok(response) = response {
+                    responder.respond(response);
+                }
+            });
+        })
         .setup(|app| {
             // ~/Library/Application Support/<identifier>/ on macOS
             let dir = app.path().app_data_dir()?;

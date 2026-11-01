@@ -55,12 +55,13 @@ export function toUrl(input: string): string {
 	return SEARCH + encodeURIComponent(text);
 }
 
-/** Google's web, image and video results (udm 14 / 2 / 7): search.js draws them on the paper, without the card around the page */
+/** Google's web, image and video results (udm 14 / 2 / 7) and the focus search (resurf://localhost/focus,
+ * Marginalia's): search.js draws them on the paper, without the card around the page */
 export function isSearch(url: string): boolean {
 	const u = parse(url);
-	return !!u && /(^|\.)google\.[a-z.]+$/.test(u.hostname) && u.pathname === '/search' && ['14', '2', '7'].includes(u.searchParams.get('udm') ?? '')
-		// ALT: Google's own page, in the card as any other
-		&& u.searchParams.get('resurf') !== 'google';
+	if (!u) return false;
+	if (u.protocol === 'resurf:') return u.pathname === '/focus';
+	return /(^|\.)google\.[a-z.]+$/.test(u.hostname) && u.pathname === '/search' && ['14', '2', '7'].includes(u.searchParams.get('udm') ?? '');
 }
 
 /** What was searched: shown where the site would be */

@@ -1,8 +1,8 @@
 // Google's results in the ReSurf look: the results as a quiet list (title, site, a line; ReSurf shows the query above),
 // or the pictures as a grid, on the paper, without the ads, the panels and Google's own header. Four
-// buttons at the sides switch what is searched: ALL (web pages), IMG, VID; ALT shows the same results as
-// Google draws them (marked resurf=google, which this script and the card in App.svelte leave alone).
-// ↑ / ↓ choose one (inked), Enter opens it.
+// buttons at the sides switch what is searched: ALL (web pages), IMG, VID, and FCS, the focus search:
+// the same query in Marginalia, the small, text web (resurf://localhost/focus, made by lib.rs with the
+// results in window.__resurfFocus). ↑ / ↓ choose one (inked), Enter opens it.
 // Google's markup changes often and its class names mean nothing, so the results are found by what they
 // are (a link out of Google with a heading in it; a picture that points out of Google), and when too few
 // turn up the page is left as Google made it. lib.rs puts the brush shapes in for the __BRUSH_…__ marks.
@@ -10,20 +10,21 @@
 	if (window.__resurfSearch) return;
 	window.__resurfSearch = true;
 
-	const isGoogle = /(^|\.)google\.[a-z.]+$/.test(location.hostname);
-	if (!isGoogle || location.pathname !== '/search') return;
+	const isGoogle = /(^|\.)google\.[a-z.]+$/.test(location.hostname) && location.pathname === '/search';
+	const isFocus = location.protocol === 'resurf:' && location.pathname === '/focus';
+	if (!isGoogle && !isFocus) return;
 	const params = new URLSearchParams(location.search);
 	const query = params.get('q') || '';
-	if (!query || params.get('resurf') === 'google') return;
+	if (!query) return;
 
 	// the "Web" filter (udm=14): just the links, no AI answer or panels; Google's other tabs (tbm) are left alone
-	if (!params.has('udm') && !params.has('tbm')) {
+	if (isGoogle && !params.has('udm') && !params.has('tbm')) {
 		params.set('udm', '14');
 		location.replace(location.pathname + '?' + params.toString());
 		return;
 	}
 	const KINDS = { 14: 'all', 2: 'img', 7: 'vid' };
-	const kind = KINDS[params.get('udm')];
+	const kind = isFocus ? 'fcs' : KINDS[params.get('udm')];
 	if (!kind) return;
 
 	const svg = (s) => `url("data:image/svg+xml,${encodeURIComponent(s)}")`;
@@ -95,7 +96,7 @@
 		#resurf-search .re-grid img { display: block; height: 150px; width: auto; max-width: 320px; object-fit: cover; border-radius: 8px; }
 		#resurf-search .re-grid a:hover { opacity: 0.8; }
 		#resurf-search .re-grid li.re-on a { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
-		/* ALL / IMG / VID / ALT: vertical words at the sides, as the switches in the Re apps (.side.switch) */
+		/* ALL / IMG / VID / FCS: vertical words at the sides, as the switches in the Re apps (.side.switch) */
 		#resurf-kinds a {
 			/* border-box, as everything in the Re apps (Google's page has its own idea) */
 			box-sizing: border-box; margin: 0;
@@ -109,7 +110,8 @@
 		#resurf-kinds a.re-all { left: 44px; top: 40px; }
 		#resurf-kinds a.re-img { left: 44px; bottom: 40px; }
 		#resurf-kinds a.re-vid { right: 44px; top: 40px; }
-		#resurf-kinds a.re-alt { right: 44px; bottom: 40px; }
+		#resurf-kinds a.re-fcs { right: 44px; bottom: 40px; }
+		#resurf-search .re-none { margin: 40px 0; text-align: center; font-size: 18px; opacity: 0.6; }
 		/* PREV / NEXT: boxes halfway down the sides, as the Re apps' (.side.boxed) */
 		#resurf-kinds a.re-box {
 			top: 50%; transform: translateY(-50%); min-height: 164px; padding: 18px 0 calc(18px - 0.6em);
@@ -230,8 +232,15 @@
 		return found;
 	}
 
-	const find = kind === 'img' ? findPictures : findPages;
-	const enough = kind === 'img' ? 6 : 3;
+	// Marginalia's, as lib.rs got them
+	function findFocus() {
+		const data = window.__resurfFocus || {};
+		return (data.results || []).filter((r) => isOut(r.url)).map((r) => ({ href: r.url, title: r.title || r.url, line: r.description || '' }));
+	}
+
+	const find = { img: findPictures, fcs: findFocus }[kind] || findPages;
+	// the focus page comes with its results (or none): drawn whatever it holds
+	const enough = { img: 6, fcs: 0 }[kind] ?? 3;
 
 	function site(href) {
 		const u = new URL(href);
@@ -245,29 +254,23 @@
 		return [u.hostname.replace(/^www\./, ''), ...parts].join(' › ');
 	}
 
-	// the same search as another kind (from its first page); ALT: this page as Google draws it
-	// (all of it, AI answer and panels too, for web pages)
+	// the same search as another kind, from its first page
 	function as(other) {
-		const p = new URLSearchParams(params);
-		if (other === 'alt') {
-			if (kind === 'all') p.delete('udm');
-			p.set('resurf', 'google');
-		} else {
-			p.delete('start');
-			p.set('udm', { all: '14', img: '2', vid: '7' }[other]);
-		}
-		return location.pathname + '?' + p.toString();
+		const q = encodeURIComponent(query);
+		if (other === 'fcs') return `resurf://localhost/focus?q=${q}`;
+		const udm = { all: '14', img: '2', vid: '7' }[other];
+		return isGoogle ? `${location.origin}/search?udm=${udm}&q=${q}` : `https://www.google.com/search?udm=${udm}&q=${q}`;
 	}
 
 	function kinds() {
 		const box = document.createElement('div');
 		box.id = 'resurf-kinds';
-		for (const k of ['all', 'img', 'vid', 'alt']) {
+		for (const k of ['all', 'img', 'vid', 'fcs']) {
 			const a = document.createElement('a');
 			a.className = 're-' + k + (k === kind ? ' re-on' : '');
 			a.href = as(k);
 			a.textContent = k.toUpperCase();
-			a.title = { all: 'All', img: 'Images', vid: 'Videos', alt: 'As Google shows it' }[k];
+			a.title = { all: 'All', img: 'Images', vid: 'Videos', fcs: 'Focus: the small, text web (Marginalia Search)' }[k];
 			box.append(a);
 		}
 		return box;
@@ -336,27 +339,46 @@
 		const items = kind === 'img' ? grid(results) : list(results);
 		const column = document.createElement('div');
 		column.append(items);
+		if (!results.length) {
+			const none = document.createElement('p');
+			none.className = 're-none';
+			none.textContent = window.__resurfFocus?.error || 'Nothing found.';
+			column.append(none);
+		}
 
 		main.append(column);
 		const side = kinds();
-		// pages, counted by Google's start=: ten results at a time, or as many pictures as came
-		const step = kind === 'img' ? Math.max(10, results.length) : 10;
-		const start = Number(params.get('start')) || 0;
-		const page = (n) => {
+		// pages: Google's counted by start= (ten results at a time, or as many pictures as came),
+		// Marginalia's by page= (from 1, and it says how many there are)
+		let prevAt = null;
+		let nextAt = null;
+		const at = (key, n, first) => {
 			const p = new URLSearchParams(params);
-			n > 0 ? p.set('start', String(n)) : p.delete('start');
-			return location.pathname + '?' + p.toString();
+			n > first ? p.set(key, String(n)) : p.delete(key);
+			// (not location.origin: a resurf: address has none)
+			return location.href.split('?')[0] + '?' + p.toString();
 		};
+		if (kind === 'fcs') {
+			const page = Number(params.get('page')) || 1;
+			const pages = Number(window.__resurfFocus?.pages) || 0;
+			if (page > 1) prevAt = at('page', page - 1, 1);
+			if (page < pages) nextAt = at('page', page + 1, 1);
+		} else {
+			const step = kind === 'img' ? Math.max(10, results.length) : 10;
+			const start = Number(params.get('start')) || 0;
+			if (start > 0) prevAt = at('start', Math.max(0, start - step), 0);
+			nextAt = at('start', start + step, 0);
+		}
 		const prev = document.createElement('a');
 		prev.className = 're-box re-prev';
 		prev.textContent = 'PREV';
 		prev.title = 'Previous page';
-		if (start > 0) prev.href = page(Math.max(0, start - step));
+		if (prevAt) prev.href = prevAt;
 		const next = document.createElement('a');
 		next.className = 're-box re-next';
 		next.textContent = 'NEXT';
 		next.title = 'Next page';
-		next.href = page(start + step);
+		if (nextAt) next.href = nextAt;
 		side.append(prev, next);
 		document.body.append(main, side);
 		// Google's scripts may redraw the body later: ours stays
@@ -415,7 +437,8 @@
 		setTimeout(() => ((queued = false), look()), 50);
 	});
 	watch.observe(document.documentElement, { childList: true, subtree: true });
-	addEventListener('DOMContentLoaded', look);
+	// the focus page has all it holds as soon as it is read
+	addEventListener('DOMContentLoaded', kind === 'fcs' ? finish : look);
 	addEventListener('load', () => setTimeout(look, 100));
 	// never a blank page for long, whatever Google sends
 	setTimeout(finish, 4000);
