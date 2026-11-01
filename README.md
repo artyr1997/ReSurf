@@ -16,7 +16,7 @@ webview per tab; the interface is Svelte.
   script that runs in every page before the site's own: on YouTube it takes the ads out of the
   player's data, hides the ad slots and the anti-adblock popup, and should an ad play all the same,
   mutes it, runs it to its end and presses Skip.
-- **Search**: NEW opens it; an address goes straight there, anything else is searched with Google (its Web results, redrawn in the ReSurf look: ↑ / ↓ choose one, Enter opens it; see src-tauri/search.js).
+- **Search**: NEW opens it; an address goes straight there, anything else is searched with Google (its results redrawn in the ReSurf look on the paper: ALL / IMG / VID / BLG at the sides, ↑ / ↓ choose one, Enter opens it; see src-tauri/search.js).
 - Keys: ⌘T new tab · ⌘L address · ⌘W close · ⌘D favourite · ⌘[ ⌘] back / forward ·
   ⌘R reload · ⌘F video fills the page · ⌃Tab next tab · ⌘E e-ink · ⌘I info · right click on a tab for actions
 

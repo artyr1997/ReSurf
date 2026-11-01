@@ -1,8 +1,10 @@
 // Google's results in the ReSurf look: the query, then the results as a quiet list (title, site, a line),
-// on the paper, without the ads, the panels and Google's own header. ↑ / ↓ choose one (inked), Enter opens it.
+// or the pictures as a grid, on the paper, without the ads, the panels and Google's own header. Four
+// buttons at the sides switch what is searched: ALL (web pages), IMG, VID, BLG (pages under a /blog
+// address: Google has no blogs of its own any more). ↑ / ↓ choose one (inked), Enter opens it.
 // Google's markup changes often and its class names mean nothing, so the results are found by what they
-// are (a link out of Google with a heading in it), and when fewer than three turn up the page is left as
-// Google made it. lib.rs puts the brush shapes in for __BRUSH_LEFT__ / __BRUSH_MID__ / __BRUSH_RIGHT__.
+// are (a link out of Google with a heading in it; a picture that points out of Google), and when too few
+// turn up the page is left as Google made it. lib.rs puts the brush shapes in for the __BRUSH_…__ marks.
 (() => {
 	if (window.__resurfSearch) return;
 	window.__resurfSearch = true;
@@ -10,21 +12,29 @@
 	const isGoogle = /(^|\.)google\.[a-z.]+$/.test(location.hostname);
 	if (!isGoogle || location.pathname !== '/search') return;
 	const params = new URLSearchParams(location.search);
-	const query = params.get('q') || '';
-	if (!query) return;
+	const asked = params.get('q') || '';
+	if (!asked) return;
 
-	// the "Web" filter (udm=14): just the links, no AI answer or panels; images, news… (tbm / udm) are left alone
+	// the "Web" filter (udm=14): just the links, no AI answer or panels; Google's other tabs (tbm) are left alone
 	if (!params.has('udm') && !params.has('tbm')) {
 		params.set('udm', '14');
 		location.replace(location.pathname + '?' + params.toString());
 		return;
 	}
-	if (params.get('udm') !== '14') return;
+	const BLOG = ' inurl:blog';
+	const KINDS = { 14: 'all', 2: 'img', 7: 'vid' };
+	let kind = KINDS[params.get('udm')];
+	if (!kind) return;
+	if (kind === 'all' && asked.endsWith(BLOG)) kind = 'blg';
+	const query = kind === 'blg' ? asked.slice(0, -BLOG.length) : asked;
 
 	const svg = (s) => `url("data:image/svg+xml,${encodeURIComponent(s)}")`;
 	const left = svg(`__BRUSH_LEFT__`);
 	const mid = svg(`__BRUSH_MID__`);
 	const right = svg(`__BRUSH_RIGHT__`);
+	const top = svg(`__BRUSH_TOP__`);
+	const midV = svg(`__BRUSH_MID_V__`);
+	const bottom = svg(`__BRUSH_BOTTOM__`);
 
 	const css = `
 		@import url('https://fonts.googleapis.com/css2?family=Kurale&family=Noto+Sans+JP:wght@300;400&display=swap');
@@ -38,15 +48,16 @@
 			margin: 0 !important; padding: 0 !important; height: 100% !important; overflow: hidden !important;
 			background: transparent !important; color: var(--text) !important;
 		}
-		html.resurf-search body > :not(#resurf-search) { display: none !important; }
+		html.resurf-search body > :not(#resurf-search):not(#resurf-kinds) { display: none !important; }
 		/* the list scrolls in a box that fades out at its top and bottom, as the lists in the Re apps do */
 		#resurf-search {
-			position: fixed; inset: 0; overflow-y: auto; scrollbar-width: none;
+			position: fixed; inset: 0 90px; overflow-y: auto; scrollbar-width: none;
 			-webkit-mask-image: linear-gradient(to bottom, transparent, #000 40px, #000 calc(100% - 40px), transparent);
 			font-family: 'Kurale', Georgia, serif; -webkit-font-smoothing: antialiased;
 		}
 		#resurf-search::-webkit-scrollbar { display: none; }
-		#resurf-search > div { max-width: 680px; margin: 0 auto; padding: 48px 32px 64px; }
+		#resurf-search > div { max-width: 680px; margin: 0 auto; padding: 48px 0 64px; }
+		#resurf-search.re-pictures > div { max-width: none; }
 		#resurf-search h1 {
 			margin: 0 0 40px; font: 400 24px/32px 'Kurale', Georgia, serif; text-align: center;
 		}
@@ -69,12 +80,38 @@
 			-webkit-mask: ${left} left center / auto 100% no-repeat, ${right} right center / auto 100% no-repeat,
 				${mid} 0.65em center / calc(100% - 1.3em) 100% no-repeat;
 		}
+		/* pictures: rows of the same height, as many as fit */
+		#resurf-search .re-grid { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin: 0; padding: 0; list-style: none; }
+		#resurf-search .re-grid li { margin: 0; }
+		#resurf-search .re-grid a { display: block; outline: none; border-radius: 8px; transition: opacity 200ms ease; }
+		#resurf-search .re-grid img { display: block; height: 150px; width: auto; max-width: 320px; object-fit: cover; border-radius: 8px; }
+		#resurf-search .re-grid a:hover { opacity: 0.8; }
+		#resurf-search .re-grid li.re-on a { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
 		#resurf-search nav { display: flex; justify-content: space-between; margin-top: 48px; }
 		#resurf-search nav a {
 			font: 400 14px/20px 'Noto Sans JP', sans-serif; letter-spacing: 0.6em; color: inherit;
 			text-decoration: none; opacity: 0.75;
 		}
 		#resurf-search nav a:hover { opacity: 1; }
+		/* ALL / IMG / VID / BLG: vertical words at the sides, as the switches in the Re apps (.side.switch) */
+		#resurf-kinds a {
+			position: fixed; z-index: 1; width: 42px; padding: 0.55em 0 0;
+			font: 400 20px/32px 'Noto Sans JP', sans-serif; letter-spacing: 0.6em;
+			writing-mode: vertical-rl; text-orientation: upright; display: flex; align-items: center;
+			color: var(--text); text-decoration: none; opacity: 0.75; transition: opacity 200ms ease;
+			-webkit-font-smoothing: antialiased;
+		}
+		#resurf-kinds a:hover { opacity: 1; }
+		#resurf-kinds a.re-all { left: 24px; top: 40px; }
+		#resurf-kinds a.re-img { left: 24px; bottom: 40px; }
+		#resurf-kinds a.re-vid { right: 24px; top: 40px; }
+		#resurf-kinds a.re-blg { right: 24px; bottom: 40px; }
+		/* the one shown: inked with the brushstroke drawn top to bottom */
+		#resurf-kinds a.re-on {
+			opacity: 1; color: var(--bg); background: var(--ink);
+			-webkit-mask: ${top} center top / 100% auto no-repeat, ${bottom} center bottom / 100% auto no-repeat,
+				${midV} center 0.65em / 100% calc(100% - 1.3em) no-repeat;
+		}
 	`;
 	const style = document.createElement('style');
 	style.textContent = css;
@@ -89,19 +126,23 @@
 			return false;
 		}
 	};
-	// Google's own redirect (/url?q=…) → the page itself
+	// Google's own redirects (/url?q=…, /imgres?imgrefurl=…) → the page itself
 	const target = (a) => {
 		try {
 			const u = new URL(a.href);
-			if (/(^|\.)google\./.test(u.hostname) && u.pathname === '/url') return u.searchParams.get('q') || u.searchParams.get('url') || '';
+			if (/(^|\.)google\./.test(u.hostname)) {
+				if (u.pathname === '/url') return u.searchParams.get('q') || u.searchParams.get('url') || '';
+				if (u.pathname === '/imgres') return u.searchParams.get('imgrefurl') || '';
+			}
 		} catch {}
 		return a.href;
 	};
 	// textContent: innerText is empty while the page is held hidden
 	const text = (el) => (el?.textContent || '').replace(/\s+/g, ' ').trim();
+	const resultsRoot = () => document.querySelector('#rso') || document.querySelector('#search') || document.querySelector('#main') || document.body;
 
-	function find() {
-		const root = document.querySelector('#rso') || document.querySelector('#search') || document.querySelector('#main') || document.body;
+	function findPages() {
+		const root = resultsRoot();
 		const heads = [...root.querySelectorAll('h3, [role="heading"][aria-level="3"]')];
 		const seen = new Set();
 		const found = [];
@@ -134,6 +175,32 @@
 		return found;
 	}
 
+	// pictures: Google's thumbnails (inline data or encrypted-tbn), each with the page it comes from
+	function findPictures() {
+		const root = resultsRoot();
+		const seen = new Set();
+		const found = [];
+		for (const img of root.querySelectorAll('img')) {
+			const src = img.currentSrc || img.src || '';
+			if (!/^(data:image\/(jpeg|png|webp|gif)|https:\/\/encrypted-tbn)/.test(src) || seen.has(src)) continue;
+			// not the sites' little icons
+			if (img.getBoundingClientRect().width < 60 && (img.naturalWidth || 0) < 60) continue;
+			const box = img.closest('[data-lpage]');
+			let href = box?.getAttribute('data-lpage') || '';
+			if (!href) {
+				const a = img.closest('a[href]');
+				href = a ? target(a) : '';
+			}
+			if (!isOut(href)) continue;
+			seen.add(src);
+			found.push({ href, src, title: img.alt || text(box) || '' });
+		}
+		return found;
+	}
+
+	const find = kind === 'img' ? findPictures : findPages;
+	const enough = kind === 'img' ? 6 : 3;
+
 	function site(href) {
 		const u = new URL(href);
 		const parts = u.pathname.split('/').filter(Boolean).map((p) => {
@@ -146,12 +213,31 @@
 		return [u.hostname.replace(/^www\./, ''), ...parts].join(' › ');
 	}
 
-	function render(results) {
-		const main = document.createElement('main');
-		main.id = 'resurf-search';
-		const h1 = document.createElement('h1');
-		h1.textContent = query;
-		const list = document.createElement('ol');
+	// the same search as another kind (from its first page)
+	function as(other) {
+		const p = new URLSearchParams(params);
+		p.delete('start');
+		p.set('q', other === 'blg' ? query + BLOG : query);
+		p.set('udm', { all: '14', blg: '14', img: '2', vid: '7' }[other]);
+		return location.pathname + '?' + p.toString();
+	}
+
+	function kinds() {
+		const box = document.createElement('div');
+		box.id = 'resurf-kinds';
+		for (const k of ['all', 'img', 'vid', 'blg']) {
+			const a = document.createElement('a');
+			a.className = 're-' + k + (k === kind ? ' re-on' : '');
+			a.href = as(k);
+			a.textContent = k.toUpperCase();
+			a.title = { all: 'All', img: 'Images', vid: 'Videos', blg: 'Blogs' }[k];
+			box.append(a);
+		}
+		return box;
+	}
+
+	function list(results) {
+		const ol = document.createElement('ol');
 		for (const r of results) {
 			const li = document.createElement('li');
 			const a = document.createElement('a');
@@ -171,54 +257,90 @@
 				a.append(p);
 			}
 			li.append(a);
-			list.append(li);
+			ol.append(li);
 		}
-		// pages: ten at a time, counted by Google's start=
-		const start = Number(params.get('start')) || 0;
-		const page = (n) => {
-			const p = new URLSearchParams(params);
-			n > 0 ? p.set('start', String(n)) : p.delete('start');
-			return location.pathname + '?' + p.toString();
-		};
-		const nav = document.createElement('nav');
-		const prev = document.createElement('a');
-		prev.textContent = 'PREV';
-		if (start > 0) prev.href = page(Math.max(0, start - 10));
-		else prev.style.visibility = 'hidden';
-		const next = document.createElement('a');
-		next.textContent = 'NEXT';
-		next.href = page(start + 10);
-		nav.append(prev, next);
+		return ol;
+	}
 
+	function grid(results) {
+		const ul = document.createElement('ul');
+		ul.className = 're-grid';
+		for (const r of results) {
+			const li = document.createElement('li');
+			const a = document.createElement('a');
+			a.href = r.href;
+			a.title = r.title ? `${r.title} — ${site(r.href).split(' › ')[0]}` : site(r.href);
+			const img = document.createElement('img');
+			img.src = r.src;
+			img.alt = r.title;
+			a.append(img);
+			li.append(a);
+			ul.append(li);
+		}
+		return ul;
+	}
+
+	function render(results) {
+		const main = document.createElement('main');
+		main.id = 'resurf-search';
+		if (kind === 'img') main.className = 're-pictures';
+		const h1 = document.createElement('h1');
+		h1.textContent = query;
+		const items = kind === 'img' ? grid(results) : list(results);
 		const column = document.createElement('div');
-		column.append(h1, list, nav);
+		column.append(h1, items);
+
+		// pages: ten at a time, counted by Google's start= (pictures come as one long page)
+		if (kind !== 'img') {
+			const start = Number(params.get('start')) || 0;
+			const page = (n) => {
+				const p = new URLSearchParams(params);
+				n > 0 ? p.set('start', String(n)) : p.delete('start');
+				return location.pathname + '?' + p.toString();
+			};
+			const nav = document.createElement('nav');
+			const prev = document.createElement('a');
+			prev.textContent = 'PREV';
+			if (start > 0) prev.href = page(Math.max(0, start - 10));
+			else prev.style.visibility = 'hidden';
+			const next = document.createElement('a');
+			next.textContent = 'NEXT';
+			next.href = page(start + 10);
+			nav.append(prev, next);
+			column.append(nav);
+		}
 		main.append(column);
-		document.body.append(main);
+		const side = kinds();
+		document.body.append(main, side);
 		// Google's scripts may redraw the body later: ours stays
-		new MutationObserver(() => main.isConnected || document.body.append(main)).observe(document.documentElement, { childList: true, subtree: true });
+		new MutationObserver(() => {
+			if (!main.isConnected) document.body.append(main);
+			if (!side.isConnected) document.body.append(side);
+		}).observe(document.documentElement, { childList: true, subtree: true });
 		document.documentElement.classList.add('resurf-search');
 		document.title = query;
 
-		const items = [...list.children];
+		const all = [...items.children];
 		let chosen = -1;
 		const choose = (i) => {
-			items[chosen]?.classList.remove('re-on');
-			chosen = Math.max(0, Math.min(items.length - 1, i));
-			items[chosen].classList.add('re-on');
-			items[chosen].scrollIntoView({ block: 'nearest' });
+			all[chosen]?.classList.remove('re-on');
+			chosen = Math.max(0, Math.min(all.length - 1, i));
+			all[chosen].classList.add('re-on');
+			all[chosen].scrollIntoView({ block: 'nearest' });
 		};
 		addEventListener('keydown', (e) => {
 			if (e.metaKey || e.ctrlKey || e.altKey || /^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName)) return;
-			if (e.key === 'ArrowDown') choose(chosen + 1);
-			else if (e.key === 'ArrowUp') choose(chosen - 1);
-			else if (e.key === 'Enter' && chosen >= 0) location.href = items[chosen].querySelector('a').href;
+			const sideways = kind === 'img';
+			if (e.key === 'ArrowDown' || (sideways && e.key === 'ArrowRight')) choose(chosen + 1);
+			else if (e.key === 'ArrowUp' || (sideways && e.key === 'ArrowLeft')) choose(chosen - 1);
+			else if (e.key === 'Enter' && chosen >= 0) location.href = all[chosen].querySelector('a').href;
 			else return;
 			e.preventDefault();
 		}, true);
 	}
 
 	// Google draws its results with scripts, some after the page has loaded: look each time the page
-	// changes, and draw ours once there are three or more and no new ones for a moment
+	// changes, and draw ours once there are enough and no new ones for a moment
 	let done = false;
 	let count = 0;
 	let settle = 0;
@@ -227,7 +349,7 @@
 		done = true;
 		watch.disconnect();
 		const results = find();
-		if (results.length >= 3) render(results);
+		if (results.length >= enough) render(results);
 		document.documentElement.classList.remove('resurf-hold');
 	}
 	function look() {
@@ -236,7 +358,7 @@
 		if (n !== count) {
 			count = n;
 			clearTimeout(settle);
-			if (n >= 3) settle = setTimeout(finish, 300);
+			if (n >= enough) settle = setTimeout(finish, 300);
 		}
 	}
 	let queued = false;

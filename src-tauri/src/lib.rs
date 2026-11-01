@@ -260,7 +260,7 @@ fn safari_version(plist: &str) -> Option<&str> {
     Some(after[start..end].trim())
 }
 
-/// search.js with the ink brushstroke's three pieces (public/ink) put in.
+/// search.js with the ink brushstroke's pieces (public/ink), across and down, put in.
 fn search_script() -> &'static str {
     static SCRIPT: std::sync::OnceLock<String> = std::sync::OnceLock::new();
     SCRIPT.get_or_init(|| {
@@ -268,6 +268,9 @@ fn search_script() -> &'static str {
             .replace("__BRUSH_LEFT__", include_str!("../../public/ink/brush-left.svg").trim())
             .replace("__BRUSH_MID__", include_str!("../../public/ink/brush-mid.svg").trim())
             .replace("__BRUSH_RIGHT__", include_str!("../../public/ink/brush-right.svg").trim())
+            .replace("__BRUSH_TOP__", include_str!("../../public/ink/brush-top.svg").trim())
+            .replace("__BRUSH_MID_V__", include_str!("../../public/ink/brush-mid-v.svg").trim())
+            .replace("__BRUSH_BOTTOM__", include_str!("../../public/ink/brush-bottom.svg").trim())
     })
 }
 
