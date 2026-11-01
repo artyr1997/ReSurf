@@ -60,7 +60,7 @@
 		html.resurf-search body > :not(#resurf-search):not(#resurf-kinds) { display: none !important; }
 		/* the list scrolls in a box that fades out at its top and bottom, as the lists in the Re apps do */
 		#resurf-search {
-			position: fixed; inset: 0 90px; overflow-y: auto; scrollbar-width: none;
+			position: fixed; inset: 0 130px; overflow-y: auto; scrollbar-width: none;
 			-webkit-mask-image: linear-gradient(to bottom, transparent, #000 40px, #000 calc(100% - 40px), transparent);
 			font-family: 'Kurale', Georgia, serif; -webkit-font-smoothing: antialiased;
 		}
@@ -112,10 +112,10 @@
 			-webkit-font-smoothing: antialiased;
 		}
 		#resurf-kinds a:hover { opacity: 1; }
-		#resurf-kinds a.re-all { left: 24px; top: 40px; }
-		#resurf-kinds a.re-img { left: 24px; bottom: 40px; }
-		#resurf-kinds a.re-vid { right: 24px; top: 40px; }
-		#resurf-kinds a.re-blg { right: 24px; bottom: 40px; }
+		#resurf-kinds a.re-all { left: 64px; top: 40px; }
+		#resurf-kinds a.re-img { left: 64px; bottom: 40px; }
+		#resurf-kinds a.re-vid { right: 64px; top: 40px; }
+		#resurf-kinds a.re-blg { right: 64px; bottom: 40px; }
 		/* the one shown: inked with the brushstroke drawn top to bottom */
 		#resurf-kinds a.re-on {
 			opacity: 1; color: var(--bg); background: var(--ink);
