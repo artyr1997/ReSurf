@@ -99,27 +99,27 @@
 		#resurf-search .re-grid li.re-on a { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
 		/* ALL / IMG / VID / BLG: vertical words at the sides, as the switches in the Re apps (.side.switch) */
 		#resurf-kinds a {
-			position: fixed; z-index: 1; width: 42px; padding: 0.55em 0 0;
-			font: 400 20px/32px 'Noto Sans JP', sans-serif; letter-spacing: 0.6em;
+			position: fixed; z-index: 1; width: 32px; padding: 0.55em 0 0;
+			font: 400 15px/24px 'Noto Sans JP', sans-serif; letter-spacing: 0.6em;
 			writing-mode: vertical-rl; text-orientation: upright; display: flex; align-items: center;
 			color: var(--text); text-decoration: none; opacity: 0.75; transition: opacity 200ms ease;
 			-webkit-font-smoothing: antialiased;
 		}
 		#resurf-kinds a:hover { opacity: 1; }
-		#resurf-kinds a.re-all { left: 64px; top: 40px; }
-		#resurf-kinds a.re-img { left: 64px; bottom: 40px; }
-		#resurf-kinds a.re-vid { right: 64px; top: 40px; }
-		#resurf-kinds a.re-blg { right: 64px; bottom: 40px; }
+		#resurf-kinds a.re-all { left: 69px; top: 40px; }
+		#resurf-kinds a.re-img { left: 69px; bottom: 40px; }
+		#resurf-kinds a.re-vid { right: 69px; top: 40px; }
+		#resurf-kinds a.re-blg { right: 69px; bottom: 40px; }
 		/* PREV / NEXT: boxes halfway down the sides, as the Re apps' (.side.boxed) */
 		#resurf-kinds a.re-box {
-			top: 50%; transform: translateY(-50%); min-height: 164px; padding: 18px 0 calc(18px - 0.6em);
-			justify-content: center; border: 2px solid var(--line); opacity: 1;
+			top: 50%; transform: translateY(-50%); min-height: 120px; padding: 14px 0 calc(14px - 0.6em);
+			justify-content: center; border: 1.5px solid var(--line); opacity: 1;
 			transition: background 200ms ease, color 200ms ease;
 		}
 		#resurf-kinds a.re-box:hover { background: var(--text); border-color: var(--text); color: var(--bg); }
 		#resurf-kinds a.re-box:not([href]) { opacity: 0.3; pointer-events: none; }
-		#resurf-kinds a.re-prev { left: 64px; }
-		#resurf-kinds a.re-next { right: 64px; }
+		#resurf-kinds a.re-prev { left: 69px; }
+		#resurf-kinds a.re-next { right: 69px; }
 		/* the one shown: inked with the brushstroke drawn top to bottom */
 		#resurf-kinds a.re-on {
 			opacity: 1; color: var(--bg); background: var(--ink);
