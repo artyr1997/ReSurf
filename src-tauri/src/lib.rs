@@ -33,16 +33,17 @@ fn tab_id(label: &str) -> Option<u64> {
     label.strip_prefix("tab-")?.parse().ok()
 }
 
-/// E-ink: pages in soft greys, as on a reader's screen, and nothing moves.
-/// By day: the contrast lowered (0.6), black a dark grey (about #3D3D3D), white the paper
-/// (#F4F4F4 = 0.957 of white: 1.196 × (0.5 + 0.5 × 0.6)).
-/// At night (the Mac dark): the page turned over, light letters on the dark, white the night's paper
-/// (#1D1D1D) and black a soft light grey (about #9A9A9A); pictures and videos turned back, so they
+/// E-ink: pages in the app's own two colours, as on a reader's screen, and nothing moves: a page's
+/// light becomes the app's paper and its dark the app's ink (filters map 0…1 onto a…b: contrast c,
+/// then brightness k, with k × (1 − c) / 2 = a and k × (1 + c) / 2 = b).
+/// By day: white the paper #F4F4F4 (0.957), black the ink #474747 (0.278): c 0.55, k 1.235.
+/// At night (the Mac dark): the page turned over, its white the night's paper #1D1D1D (0.114) and its
+/// black the night's ink #808080 (0.502): c 0.631, k 0.616; pictures and videos turned back, so they
 /// stay themselves, only grey and dimmed.
 const EINK_CSS: &str = "\
-html { filter: grayscale(1) contrast(0.6) brightness(1.196) !important; scroll-behavior: auto !important; }
+html { filter: grayscale(1) contrast(0.55) brightness(1.235) !important; scroll-behavior: auto !important; }
 @media (prefers-color-scheme: dark) {
-  html { filter: grayscale(1) invert(1) contrast(0.68) brightness(0.715) !important; }
+  html { filter: grayscale(1) invert(1) contrast(0.631) brightness(0.616) !important; }
   img, picture, video, canvas, iframe, embed, object { filter: invert(1) !important; }
 }
 *, *::before, *::after {
