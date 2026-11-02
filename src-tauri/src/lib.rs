@@ -33,10 +33,11 @@ fn tab_id(label: &str) -> Option<u64> {
     label.strip_prefix("tab-")?.parse().ok()
 }
 
-/// E-ink: pages in greys with a little more contrast, white turned into the paper
-/// (#F4F4F4 = 0.957 of white), and nothing moves.
+/// E-ink: pages in soft greys, as on a reader's screen: the contrast lowered (0.6) so black comes out
+/// a dark grey (about #3D3D3D, near the apps' ink) and white the paper (#F4F4F4 = 0.957 of white:
+/// 1.196 × (0.5 + 0.5 × 0.6)); and nothing moves.
 const EINK_CSS: &str = "\
-html { filter: grayscale(1) contrast(1.12) brightness(0.957) !important; scroll-behavior: auto !important; }
+html { filter: grayscale(1) contrast(0.6) brightness(1.196) !important; scroll-behavior: auto !important; }
 *, *::before, *::after {
   animation-duration: 0.001s !important; animation-iteration-count: 1 !important;
   transition-duration: 0s !important; transition-delay: 0s !important;
