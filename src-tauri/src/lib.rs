@@ -34,10 +34,10 @@ fn tab_id(label: &str) -> Option<u64> {
 }
 
 /// E-ink: pages in soft, darker greys, as on a reader's screen: the contrast lowered (0.6) and the
-/// light dimmed (1.08), so black comes out a dark grey (about #383838) and white a light grey
-/// (about #DBDBDB: 1.08 × (0.5 + 0.5 × 0.6)); and nothing moves.
+/// light dimmed (0.97), so black comes out a dark grey (about #323232) and white a mid-light grey
+/// (about #C6C6C6: 0.97 × (0.5 + 0.5 × 0.6)); and nothing moves.
 const EINK_CSS: &str = "\
-html { filter: grayscale(1) contrast(0.6) brightness(1.08) !important; scroll-behavior: auto !important; }
+html { filter: grayscale(1) contrast(0.6) brightness(0.97) !important; scroll-behavior: auto !important; }
 *, *::before, *::after {
   animation-duration: 0.001s !important; animation-iteration-count: 1 !important;
   transition-duration: 0s !important; transition-delay: 0s !important;
