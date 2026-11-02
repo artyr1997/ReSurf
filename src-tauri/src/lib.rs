@@ -33,11 +33,18 @@ fn tab_id(label: &str) -> Option<u64> {
     label.strip_prefix("tab-")?.parse().ok()
 }
 
-/// E-ink: pages in soft, darker greys, as on a reader's screen: the contrast lowered (0.6) and the
-/// light dimmed (0.97), so black comes out a dark grey (about #323232) and white a mid-light grey
-/// (about #C6C6C6: 0.97 × (0.5 + 0.5 × 0.6)); and nothing moves.
+/// E-ink: pages in soft greys, as on a reader's screen, and nothing moves.
+/// By day: the contrast lowered (0.6), black a dark grey (about #3D3D3D), white the paper
+/// (#F4F4F4 = 0.957 of white: 1.196 × (0.5 + 0.5 × 0.6)).
+/// At night (the Mac dark): the page turned over, light letters on the dark, white the night's paper
+/// (#1D1D1D) and black a soft light grey (about #9A9A9A); pictures and videos turned back, so they
+/// stay themselves, only grey and dimmed.
 const EINK_CSS: &str = "\
-html { filter: grayscale(1) contrast(0.6) brightness(0.97) !important; scroll-behavior: auto !important; }
+html { filter: grayscale(1) contrast(0.6) brightness(1.196) !important; scroll-behavior: auto !important; }
+@media (prefers-color-scheme: dark) {
+  html { filter: grayscale(1) invert(1) contrast(0.68) brightness(0.715) !important; }
+  img, picture, video, canvas, iframe, embed, object { filter: invert(1) !important; }
+}
 *, *::before, *::after {
   animation-duration: 0.001s !important; animation-iteration-count: 1 !important;
   transition-duration: 0s !important; transition-delay: 0s !important;
