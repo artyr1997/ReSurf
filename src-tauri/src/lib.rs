@@ -40,13 +40,17 @@ fn tab_id(label: &str) -> Option<u64> {
 /// At night (the Mac dark): the page turned over, its white the night's paper #1D1D1D (0.114) and its
 /// black the night's ink #808080 (0.502): c 0.631, k 0.616; pictures and videos turned back, so they
 /// stay themselves, only grey and dimmed.
+/// Pages already in the app's own style (the search page, resurf-search, and its held moment
+/// before, resurf-hold) are left exactly as they are.
 const EINK_CSS: &str = "\
-html { filter: grayscale(1) contrast(0.55) brightness(1.235) !important; scroll-behavior: auto !important; }
+html:not(.resurf-search):not(.resurf-hold) { filter: grayscale(1) contrast(0.55) brightness(1.235) !important; scroll-behavior: auto !important; }
 @media (prefers-color-scheme: dark) {
-  html { filter: grayscale(1) invert(1) contrast(0.631) brightness(0.616) !important; }
-  img, picture, video, canvas, iframe, embed, object { filter: invert(1) !important; }
+  html:not(.resurf-search):not(.resurf-hold) { filter: grayscale(1) invert(1) contrast(0.631) brightness(0.616) !important; }
+  html:not(.resurf-search):not(.resurf-hold) :is(img, picture, video, canvas, iframe, embed, object) { filter: invert(1) !important; }
 }
-*, *::before, *::after {
+html:not(.resurf-search):not(.resurf-hold) *,
+html:not(.resurf-search):not(.resurf-hold) *::before,
+html:not(.resurf-search):not(.resurf-hold) *::after {
   animation-duration: 0.001s !important; animation-iteration-count: 1 !important;
   transition-duration: 0s !important; transition-delay: 0s !important;
 }";
