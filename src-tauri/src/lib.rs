@@ -41,13 +41,15 @@ fn tab_id(label: &str) -> Option<u64> {
 /// black the night's ink #808080 (0.502): c 0.631, k 0.616; pictures and videos turned back, so they
 /// stay themselves, only grey and dimmed.
 /// Pages already in the app's own style (the search page, resurf-search, and its held moment
-/// before, resurf-hold) are left exactly as they are.
+/// before, resurf-hold) keep their buttons and words; only their pictures go grey and dim, as anywhere.
 const EINK_CSS: &str = "\
 html:not(.resurf-search):not(.resurf-hold) { filter: grayscale(1) contrast(0.55) brightness(1.235) !important; scroll-behavior: auto !important; }
 @media (prefers-color-scheme: dark) {
   html:not(.resurf-search):not(.resurf-hold) { filter: grayscale(1) invert(1) contrast(0.631) brightness(0.616) !important; }
   html:not(.resurf-search):not(.resurf-hold) :is(img, picture, video, canvas, iframe, embed, object) { filter: invert(1) !important; }
+  html.resurf-search #resurf-search img { filter: grayscale(1) contrast(0.631) brightness(0.616) !important; }
 }
+html.resurf-search #resurf-search img { filter: grayscale(1) contrast(0.55) brightness(1.235); }
 html:not(.resurf-search):not(.resurf-hold) *,
 html:not(.resurf-search):not(.resurf-hold) *::before,
 html:not(.resurf-search):not(.resurf-hold) *::after {
