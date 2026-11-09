@@ -17,6 +17,8 @@ export interface Saved {
 	tabs: Tab[];
 	active: number | null;
 	eink: boolean;
+	/** the page over the whole window (FULL) */
+	full?: boolean;
 	nextId: number;
 }
 
@@ -40,6 +42,7 @@ export const api = {
 	fillVideo: (id: number) => invoke<void>('fill_video', { id }),
 	tabUrl: (id: number) => invoke<string | null>('tab_url', { id }),
 	setEink: (on: boolean) => invoke<void>('set_eink', { on }),
+	setFull: (on: boolean) => invoke<void>('set_full', { on }),
 	copy: (text: string) => invoke<void>('copy_text', { text }),
 };
 

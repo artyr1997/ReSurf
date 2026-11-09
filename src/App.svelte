@@ -17,6 +17,8 @@
 	let tabs: Tab[] = $state([]);
 	let active: number | null = $state(null);
 	let eink = $state(false);
+	// FULL: the page over the whole window, nothing around it (⌘⇧F, or FULL, goes back)
+	let full = $state(false);
 	let nextId = $state(1);
 	let ready = $state(false);
 
@@ -78,7 +80,7 @@
 
 	let saveTimer: ReturnType<typeof setTimeout> | null = null;
 	$effect(() => {
-		const json = JSON.stringify({ tabs, active, eink, nextId } satisfies Saved);
+		const json = JSON.stringify({ tabs, active, eink, full, nextId } satisfies Saved);
 		if (!ready) return;
 		if (saveTimer) clearTimeout(saveTimer);
 		saveTimer = setTimeout(() => api.saveState(json), 300);
@@ -92,6 +94,7 @@
 				tabs = saved.tabs ?? [];
 				nextId = saved.nextId ?? tabs.reduce((m, t) => Math.max(m, t.id + 1), 1);
 				eink = !!saved.eink;
+				full = !!saved.full;
 				active = tabs.some(t => t.id === saved.active) ? saved.active : null;
 			} catch {
 				// a damaged file: start clean
@@ -216,6 +219,19 @@
 		tick().then(() => document.querySelector('.tab.active')?.scrollIntoView({ block: 'nearest' }));
 	});
 
+	function toggleFull() {
+		full = !full;
+	}
+
+	// the pages' corners follow (lib.rs set_full): the window's in FULL, the card's otherwise
+	// search results too: their own buttons (ALL, IMG, VID, PREV, NEXT …) take the sides' place
+	let fullShown = $derived(full && mode === 'page');
+	$effect(() => {
+		api.setFull(fullShown);
+		// the side buttons and the tabs go (html.full): the page alone, under it only the paper
+		document.documentElement.classList.toggle('full', fullShown);
+	});
+
 	function toggleEink() {
 		eink = !eink;
 		api.setEink(eink);
@@ -262,6 +278,7 @@
 		else if (id === 'reload' && active !== null) api.reload(active);
 		else if (id === 'video' && active !== null) api.fillVideo(active);
 		else if (id === 'eink') toggleEink();
+		else if (id === 'full') toggleFull();
 		else if (id === 'info') popup = popup === 'info' ? 'none' : 'info';
 	}
 
@@ -345,6 +362,7 @@
 		['⌘ F', 'Video fills the page'],
 		['⌥ ↑ / ⌥ ↓', 'Previous / next tab'],
 		['⌥ ← / ⌥ →', 'Favourites / other tabs'],
+		['⌘ ⇧ F', 'Page fills the window'],
 		['⌘ E', 'E-ink'],
 		['⌘ I', 'Info'],
 		['Right click', 'Tab actions'],
@@ -355,7 +373,7 @@
 	if ((e.target as HTMLElement)?.tagName !== 'INPUT') e.preventDefault();
 }} />
 
-<WindowControls />
+<WindowControls hidden={fullShown} />
 
 {#snippet icon(tab: Tab)}
 	<button
@@ -383,7 +401,7 @@
 </nav>
 <button class="side plain nav-info" onclick={() => (popup = 'info')} title="Info (⌘I)">INFO</button>
 
-<!-- right: favourite switch, the other tabs, e-ink -->
+<!-- right: favourite switch, the other tabs, full -->
 <button
 	class="side switch nav-favo"
 	class:ink-mark-v={current?.favorite}
@@ -396,16 +414,16 @@
 		{#each others as tab (tab.id)}{@render icon(tab)}{/each}
 	</div>
 </nav>
-<button class="side switch nav-eink" class:ink-mark-v={eink} onclick={toggleEink} title="E-ink (⌘E)">EINK</button>
+<button class="side switch nav-full" class:ink-mark-v={full} onclick={toggleFull} title="Page fills the window (⌘⇧F)">FULL</button>
 
 <!-- a small window: no columns, tabs are walked with ⌥ ↑ / ⌥ ↓ -->
 <button class="corner top-right" onclick={newTab} title="New tab (⌘T)">NEW</button>
 <button class="corner bottom-left" onclick={() => (popup = 'info')} title="Info (⌘I)">INFO</button>
-<button class="corner bottom-right" class:on={eink} onclick={toggleEink} title="E-ink (⌘E)">EINK</button>
+<button class="corner bottom-right" class:on={full} onclick={toggleFull} title="Page fills the window (⌘⇧F)">FULL</button>
 
 <main>
 	<!-- the page lies over this card; it shows as paper while the page is hidden -->
-	<div class="card" class:eink class:bare={results} class:hidden={mode !== 'page' || !current} bind:this={card}></div>
+	<div class="card" class:eink class:full={fullShown} class:bare={results && mode === 'page'} class:hidden={mode !== 'page' || !current} bind:this={card}></div>
 
 	{#if mode === 'page' && current}
 		<button class="title" class:loading={loading[current.id]} onclick={editAddress} title={current.title || current.url}>
@@ -464,8 +482,13 @@
 	.nav-new { left: calc(6.25% - 28px); top: calc(6.25% + 8px); width: 42px; padding-top: 0.55em; }
 	.nav-info { left: calc(6.25% - 28px); bottom: 6.25%; width: 42px; }
 	.nav-favo { right: calc(6.25% - 28px); top: calc(6.25% + 8px); }
-	.nav-eink { right: calc(6.25% - 28px); bottom: 6.25%; }
+	.nav-full { right: calc(6.25% - 28px); bottom: 6.25%; }
 	.side:disabled { opacity: 0.3; pointer-events: none; }
+
+	/* FULL: no side buttons, no tabs, no corner buttons; on search results the page's own buttons stand there */
+	:global(html.full) .side,
+	:global(html.full) .column,
+	:global(html.full) .corner { visibility: hidden; }
 
 	/* ── tab icons, centred in each column; a long column scrolls ── */
 	.column {
@@ -551,6 +574,9 @@
 		background: var(--card);
 		box-shadow: 0 1px 12px rgba(0, 0, 0, 0.08);
 	}
+
+	/* FULL: the page over nearly the whole window, a frame of paper around it */
+	.card.full { top: 6px; bottom: 6px; left: 6px; right: 6px; border-radius: 12px; }
 
 	/* in e-ink the page sits on the paper itself */
 	.card.eink { background: var(--bg); }

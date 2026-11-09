@@ -4,6 +4,9 @@
 	// along the top for dragging.
 	import { getCurrentWindow } from '@tauri-apps/api/window';
 
+	// hidden: while a page fills the window (FULL)
+	let { hidden = false }: { hidden?: boolean } = $props();
+
 	const win = getCurrentWindow();
 
 	// the buttons show only while this window is the focused one of the active app;
@@ -23,7 +26,7 @@
 
 <div class="drag-strip" data-tauri-drag-region></div>
 
-<div class="window-controls" class:away={!focused}>
+<div class="window-controls" class:away={!focused || hidden}>
 	<button class="light close" onclick={() => win.close()} title="Close" aria-label="Close">
 		<svg viewBox="0 0 8 8"><path d="M2 2l4 4M6 2L2 6" /></svg>
 	</button>

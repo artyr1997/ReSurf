@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::webview::{NewWindowResponse, PageLoadEvent};
 use tauri::{
@@ -115,13 +115,17 @@ fn tabs<R: Runtime>(app: &AppHandle<R>) -> impl Iterator<Item = Webview<R>> {
     app.webviews().into_iter().filter(|(l, _)| tab_id(l).is_some()).map(|(_, w)| w)
 }
 
+/// The pages' corners: the card's (22), or the window's (12) while a page fills the window (FULL).
+static CORNER_RADIUS: AtomicU32 = AtomicU32::new(22);
+
 /// Rounded corners like the cards in the other Re apps, and no background of its own.
 #[cfg(target_os = "macos")]
 fn round_corners<R: Runtime>(webview: &Webview<R>) {
+    let radius = CORNER_RADIUS.load(Ordering::Relaxed) as f64;
     use objc2::msg_send;
     use objc2::runtime::AnyObject;
 
-    let _ = webview.with_webview(|platform| {
+    let _ = webview.with_webview(move |platform| {
         let view = platform.inner() as *mut AnyObject;
         if view.is_null() {
             return;
@@ -131,7 +135,7 @@ fn round_corners<R: Runtime>(webview: &Webview<R>) {
             let _: () = msg_send![view, setWantsLayer: true];
             let layer: *mut AnyObject = msg_send![view, layer];
             if !layer.is_null() {
-                let _: () = msg_send![layer, setCornerRadius: 22.0f64];
+                let _: () = msg_send![layer, setCornerRadius: radius];
                 let _: () = msg_send![layer, setMasksToBounds: true];
             }
             // clear where the page paints nothing: the card behind shows (and, for search
@@ -418,6 +422,9 @@ fn create_tab<R: Runtime>(app: &AppHandle<R>, id: u64, url: Url, bounds: &Bounds
             if eink {
                 let _ = webview.eval(eink_script(true));
             }
+            if is_full() {
+                let _ = webview.eval(full_script(true));
+            }
             if !loading {
                 let icon_app = load_app.clone();
                 let _ = webview.eval_with_callback(ICON_SCRIPT, move |result| {
@@ -559,6 +566,28 @@ fn set_eink(app: AppHandle, state: State<AppState>, on: bool) {
     }
 }
 
+fn is_full() -> bool {
+    CORNER_RADIUS.load(Ordering::Relaxed) == 12
+}
+
+/// The page hears of FULL (html.resurf-full): search results put their buttons where ReSurf's own are.
+fn full_script(on: bool) -> String {
+    format!("document.documentElement.classList.toggle('resurf-full', {on})")
+}
+
+/// FULL: the pages as round as the window, or back to the card's corners.
+#[tauri::command]
+fn set_full(app: AppHandle, on: bool) {
+    CORNER_RADIUS.store(if on { 12 } else { 22 }, Ordering::Relaxed);
+    for webview in tabs(&app) {
+        let _ = webview.eval(full_script(on));
+    }
+    #[cfg(target_os = "macos")]
+    for webview in tabs(&app) {
+        round_corners(&webview);
+    }
+}
+
 #[tauri::command]
 fn copy_text(text: String) -> CmdResult<()> {
     use std::io::Write;
@@ -626,6 +655,7 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
             &item("reload", "Reload", "CmdOrCtrl+R")?,
             &item("video", "Video Fills the Page", "CmdOrCtrl+F")?,
             &sep()?,
+            &item("full", "Page Fills the Window", "CmdOrCtrl+Shift+F")?,
             &item("eink", "E-ink", "CmdOrCtrl+E")?,
             &item("info", "Info", "CmdOrCtrl+I")?,
             &sep()?,
@@ -779,6 +809,7 @@ pub fn run() {
             fill_video,
             tab_url,
             set_eink,
+            set_full,
             copy_text,
         ])
         .run(tauri::generate_context!())

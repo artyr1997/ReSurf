@@ -41,13 +41,17 @@
 
 	const css = `
 		@import url('https://fonts.googleapis.com/css2?family=Kurale&family=Noto+Sans+JP:wght@300;400&display=swap');
-		html.resurf-hold { visibility: hidden !important; }
-		html.resurf-search {
+		/* held while the results are found: Google's page hidden, and see-through too, as some of its bits
+		   (the ⋮ menus) make themselves visible again inside a hidden part; opacity can't be undone from inside.
+		   The buttons at the sides stay, so they don't blink away while another kind or page loads. */
+		html.resurf-hold, html.resurf-hold body { background: transparent !important; }
+		html.resurf-hold body > :not(#resurf-kinds) { visibility: hidden !important; opacity: 0 !important; }
+		html.resurf-search, html.resurf-hold {
 			--bg: #F4F4F4; --text: #474747; --line: #57585A; --ink: #4a4a4a; color-scheme: light;
 			--mark-left: ${left}; --mark-mid: ${mid}; --mark-right: ${right};
 		}
 		@media (prefers-color-scheme: dark) {
-			html.resurf-search {
+			html.resurf-search, html.resurf-hold {
 				--bg: #1d1d1d; --text: #808080; --line: #747474; --ink: #767676; color-scheme: dark;
 				--mark-left: ${darkLeft}; --mark-mid: ${darkMid}; --mark-right: ${darkRight};
 			}
@@ -124,6 +128,15 @@
 		#resurf-kinds a.re-box:not([href]) { opacity: 0.3; pointer-events: none; }
 		#resurf-kinds a.re-prev { left: 44px; }
 		#resurf-kinds a.re-next { right: 44px; }
+		/* FULL (html.resurf-full): the page is the whole window less 6px, the buttons where ReSurf's own side
+		   buttons are (6.25% from the window's edges, App.svelte .side), the list under what was searched */
+		html.resurf-full #resurf-kinds a.re-all, html.resurf-full #resurf-kinds a.re-img,
+		html.resurf-full #resurf-kinds a.re-prev { left: calc(6.25vw - 33px); }
+		html.resurf-full #resurf-kinds a.re-vid, html.resurf-full #resurf-kinds a.re-fcs,
+		html.resurf-full #resurf-kinds a.re-next { right: calc(6.25vw - 33px); }
+		html.resurf-full #resurf-kinds a.re-all, html.resurf-full #resurf-kinds a.re-vid { top: calc(6.25vh + 3px); }
+		html.resurf-full #resurf-kinds a.re-img, html.resurf-full #resurf-kinds a.re-fcs { bottom: calc(6.25vh - 5px); }
+		html.resurf-full #resurf-search { top: calc(3.125vh + 30px); left: calc(6.25vw + 40px); right: calc(6.25vw + 40px); }
 		/* a small window (ReSurf's, less its margins): no buttons, the keys do it (A / I / V / F, ← / →) */
 		@media (max-width: 687px), (max-height: 471px) {
 			#resurf-kinds { display: none; }
@@ -354,9 +367,23 @@
 		}
 
 		main.append(column);
+		const { side, prevAt, nextAt } = sides(results.length);
+		// the early buttons give way to these (in the same moment, nothing blinks)
+		early?.remove();
+		early = null;
+		document.body.append(main, side);
+		// Google's scripts may redraw the body later: ours stays
+		new MutationObserver(() => {
+			if (!main.isConnected) document.body.append(main);
+			if (!side.isConnected) document.body.append(side);
+		}).observe(document.documentElement, { childList: true, subtree: true });
+		finishRender(main, items, prevAt, nextAt);
+	}
+
+	/** The buttons at the sides: the kinds, and PREV / NEXT. Pages: Google's counted by start= (ten results
+	 * at a time, or as many pictures as came), Marginalia's by page= (from 1, and it says how many there are). */
+	function sides(found) {
 		const side = kinds();
-		// pages: Google's counted by start= (ten results at a time, or as many pictures as came),
-		// Marginalia's by page= (from 1, and it says how many there are)
 		let prevAt = null;
 		let nextAt = null;
 		const at = (key, n, first) => {
@@ -371,7 +398,7 @@
 			if (page > 1) prevAt = at('page', page - 1, 1);
 			if (page < pages) nextAt = at('page', page + 1, 1);
 		} else {
-			const step = kind === 'img' ? Math.max(10, results.length) : 10;
+			const step = kind === 'img' ? Math.max(10, found) : 10;
 			const start = Number(params.get('start')) || 0;
 			if (start > 0) prevAt = at('start', Math.max(0, start - step), 0);
 			nextAt = at('start', start + step, 0);
@@ -387,12 +414,10 @@
 		next.title = 'Next page';
 		if (nextAt) next.href = nextAt;
 		side.append(prev, next);
-		document.body.append(main, side);
-		// Google's scripts may redraw the body later: ours stays
-		new MutationObserver(() => {
-			if (!main.isConnected) document.body.append(main);
-			if (!side.isConnected) document.body.append(side);
-		}).observe(document.documentElement, { childList: true, subtree: true });
+		return { side, prevAt, nextAt };
+	}
+
+	function finishRender(main, items, prevAt, nextAt) {
 		document.documentElement.classList.add('resurf-search');
 		document.title = query;
 		// Google puts the cursor in its search box, now hidden: out of it, so the keys reach the page
@@ -432,6 +457,13 @@
 	// changes, and draw ours once there are enough and no new ones for a moment
 	let done = false;
 	let count = 0;
+	// the buttons at the sides from the start, while the results are still coming
+	let early = null;
+	function showEarly() {
+		if (early || done || !document.body) return;
+		early = sides(0).side;
+		document.body.append(early);
+	}
 	let settle = 0;
 	function finish() {
 		if (done) return;
@@ -439,10 +471,14 @@
 		watch.disconnect();
 		const results = find();
 		if (results.length >= enough) render(results);
+		// Google's own page after all: no buttons of ours
+		early?.remove();
+		early = null;
 		document.documentElement.classList.remove('resurf-hold');
 	}
 	function look() {
 		if (done || !document.body) return;
+		showEarly();
 		const n = find().length;
 		if (n !== count) {
 			count = n;
