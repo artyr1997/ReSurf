@@ -930,7 +930,9 @@ fn listen_for_desk_corners(app: &tauri::AppHandle) {
             }
             let (corners, edges) = (number(c"corners") as u32, number(c"edges") as u32);
             let Some(app) = DESK_APP.get() else { return };
-            let Some(window) = app.get_webview_window("main") else { return };
+            // the interface's webview (its window holds the tabs' webviews too)
+            let Some(webview) = app.get_webview("main") else { return };
+            let window = webview.window();
             // this app's window there? (a second one of its windows is not this)
             let scale = window.scale_factor().unwrap_or(1.0);
             if let (Ok(at), Ok(size)) = (window.outer_position(), window.outer_size()) {
@@ -941,7 +943,7 @@ fn listen_for_desk_corners(app: &tauri::AppHandle) {
                     return;
                 }
             }
-            set_corners(&window, corners, edges);
+            set_corners(&webview, corners, edges);
         }
     });
     // SAFETY: AppKit's own objects, on the main thread (setup); the center keeps the block
@@ -957,11 +959,11 @@ fn listen_for_desk_corners(app: &tauri::AppHandle) {
 
 /// Only `corners` round (the view's layer and the rim), no rim along `edges`, a shadow only when alone.
 #[cfg(target_os = "macos")]
-fn set_corners(window: &tauri::WebviewWindow, corners: u32, edges: u32) {
+fn set_corners(webview: &tauri::Webview, corners: u32, edges: u32) {
     use objc2::msg_send;
     use objc2::runtime::AnyObject;
 
-    let _ = window.with_webview(move |platform| {
+    let _ = webview.with_webview(move |platform| {
         let view = platform.inner() as *mut AnyObject;
         if view.is_null() {
             return;
@@ -984,7 +986,7 @@ fn set_corners(window: &tauri::WebviewWindow, corners: u32, edges: u32) {
             let _: () = msg_send![layer, setMaskedCorners: mask];
         }
     });
-    let _ = window.set_shadow(edges == 0);
+    let _ = webview.window().set_shadow(edges == 0);
     let radius = |bit: u32| if corners & bit != 0 { 12 } else { 0 };
     let width = |bit: u32| if edges & bit != 0 { 0 } else { 1 };
     let css = if corners == 15 && edges == 0 {
@@ -995,7 +997,7 @@ fn set_corners(window: &tauri::WebviewWindow, corners: u32, edges: u32) {
             radius(1), radius(2), radius(8), radius(4), width(1), width(2), width(4), width(8)
         )
     };
-    let _ = window.eval(format!(
+    let _ = webview.eval(format!(
         "(() => {{ let s = document.getElementById('re-corners'); if (!s) {{ s = document.createElement('style'); s.id = 're-corners'; document.head.appendChild(s); }} s.textContent = {css:?}; }})()"
     ));
 }
