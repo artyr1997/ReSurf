@@ -4,7 +4,7 @@
 	// that Rust lays over the card (show_tab), so whenever the UI needs that space
 	// (Search, popups) the webview is hidden and the card is plain paper.
 	import { onMount, tick, untrack } from 'svelte';
-	import { listen } from '@tauri-apps/api/event';
+	import { getCurrentWebview } from '@tauri-apps/api/webview';
 	import WindowControls from './lib/WindowControls.svelte';
 	import Popup from './lib/Popup.svelte';
 	import { scrollFade } from './lib/scrollFade';
@@ -78,17 +78,30 @@
 
 	// ── saving: tabs, favourites and e-ink survive a restart ──
 
+	// this window's interface: the first window ("main") is the one kept; those ⌘N opens ("w2", "w3"…)
+	// start clean, keep nothing, and number their tabs from a million times their number, so no two
+	// windows' tabs share an id (each tab's webview is named by it: lib.rs)
+	const ui = getCurrentWebview();
+	const isMain = ui.label === 'main';
+	const firstId = isMain ? 1 : (Number(ui.label.slice(1)) || 2) * 1_000_000;
+
 	let saveTimer: ReturnType<typeof setTimeout> | null = null;
 	$effect(() => {
 		const json = JSON.stringify({ tabs, active, eink, full, nextId } satisfies Saved);
-		if (!ready) return;
+		if (!ready || !isMain) return;
 		if (saveTimer) clearTimeout(saveTimer);
 		saveTimer = setTimeout(() => api.saveState(json), 300);
 	});
 
 	async function restore() {
 		const text = await api.loadState().catch(() => null);
-		if (text) {
+		nextId = firstId;
+		if (text && !isMain) {
+			// another window: only e-ink, which is the app's
+			try {
+				eink = !!(JSON.parse(text) as Saved).eink;
+			} catch {}
+		} else if (text) {
 			try {
 				const saved = JSON.parse(text) as Saved;
 				tabs = saved.tabs ?? [];
@@ -325,7 +338,7 @@
 	onMount(() => {
 		restore();
 		const unlisten = [
-			listen<TabEvent>('tab', ({ payload: e }) => {
+			ui.listen<TabEvent>('tab', ({ payload: e }) => {
 				const tab = tabs.find(t => t.id === e.id);
 				if (!tab) return;
 				if (e.url) tab.url = e.url;
@@ -336,8 +349,8 @@
 				}
 				if (e.loading !== undefined) loading[tab.id] = e.loading;
 			}),
-			listen<string>('open', ({ payload }) => openTab(payload)),
-			listen<string>('menu', ({ payload }) => command(payload)),
+			ui.listen<string>('open', ({ payload }) => openTab(payload)),
+			ui.listen<string>('menu', ({ payload }) => command(payload)),
 		];
 		// pages that change the address without loading (history.pushState) send no event
 		const timer = setInterval(async () => {
@@ -353,6 +366,7 @@
 	});
 
 	const shortcuts = [
+		['⌘ N', 'New window (its own tabs)'],
 		['⌘ T', 'New tab'],
 		['⌘ L', 'Edit address'],
 		['⌘ W', 'Close tab'],

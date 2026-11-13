@@ -1,9 +1,10 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "UI permissions: core, custom window buttons and drag area. Only the UI webview gets them; the tab webviews (remote pages) get none.",
+  "description": "UI permissions: core, custom window buttons and drag area. Only the UI webviews (main, and w<n> of the windows \u2318N opens) get them; the tab webviews (remote pages) get none.",
   "webviews": [
-    "main"
+    "main",
+    "w*"
   ],
   "permissions": [
     "core:default",

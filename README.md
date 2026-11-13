@@ -18,7 +18,7 @@ webview per tab; the interface is Svelte.
   player's data, hides the ad slots and the anti-adblock popup, and should an ad play all the same,
   mutes it, runs it to its end and presses Skip.
 - **Search**: NEW opens it; an address goes straight there, anything else is searched with Google (its results redrawn in the ReSurf look on the paper: ALL / IMG / VID at the sides (keys A / I / V), and FCS (F): the same query in Marginalia Search, the small, text web; PREV / NEXT (← / →); a small window keeps just the keys, ↑ / ↓ choose one, Enter opens it; see src-tauri/search.js).
-- Keys: ⌘T new tab · ⌘L address · ⌘W close · ⌘D favourite · ⌘[ ⌘] back / forward ·
+- Keys: ⌘N new window (with tabs of its own; only the first window's tabs are kept) · ⌘T new tab · ⌘L address · ⌘W close · ⌘D favourite · ⌘[ ⌘] back / forward ·
   ⌘R reload · ⌘F video fills the page · ⌃Tab next tab · ⌘⇧F page fills the window · ⌘E e-ink · ⌘I info · right click on a tab for actions
 
 ## Run

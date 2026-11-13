@@ -1,12 +1,14 @@
 //! ReSurf: a quiet browser in the ReNote style.
-//! The window holds the Svelte UI (label `main`) and one native webview per open
-//! tab (label `tab-<id>`), laid over the page card the UI draws. Tab webviews
+//! Each window holds the Svelte UI (label `main`, or `w<n>` for those opened with ⌘N) and one
+//! native webview per open tab (label `tab-<id>`), laid over the page card the UI draws. Tab webviews
 //! load remote pages and get no IPC permissions (see capabilities/default.json);
 //! what they do comes back to the UI as `tab` / `open` events from Rust.
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::collections::HashSet;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::webview::{NewWindowResponse, PageLoadEvent};
 use tauri::{
@@ -89,8 +91,20 @@ const ICON_SCRIPT: &str = "(() => {
   return links.length ? links[0].href : location.origin + '/favicon.ico';
 })()";
 
-fn to_ui<R: Runtime, S: Serialize + Clone>(app: &AppHandle<R>, event: &str, payload: S) {
-    let _ = app.emit_to(EventTarget::webview("main"), event, payload);
+/// To the UI of window `ui` (the window's label is its UI webview's).
+fn to_ui<R: Runtime, S: Serialize + Clone>(app: &AppHandle<R>, ui: &str, event: &str, payload: S) {
+    let _ = app.emit_to(EventTarget::webview(ui), event, payload);
+}
+
+/// The window in front (the menu's shortcuts go to its UI), else the first.
+fn front_window<R: Runtime>(app: &AppHandle<R>) -> Option<tauri::Window<R>> {
+    let windows = app.windows();
+    windows
+        .values()
+        .find(|w| w.is_focused().unwrap_or(false))
+        .or_else(|| windows.get("main"))
+        .or_else(|| windows.values().next())
+        .cloned()
 }
 
 /// The page card in the UI, in logical pixels.
@@ -115,13 +129,24 @@ fn tabs<R: Runtime>(app: &AppHandle<R>) -> impl Iterator<Item = Webview<R>> {
     app.webviews().into_iter().filter(|(l, _)| tab_id(l).is_some()).map(|(_, w)| w)
 }
 
+/// The tabs of window `ui`.
+fn tabs_in<R: Runtime>(app: &AppHandle<R>, ui: &str) -> Vec<Webview<R>> {
+    let ui = ui.to_string();
+    tabs(app).filter(|w| w.window().label() == ui).collect()
+}
+
 /// The pages' corners: the card's (22), or the window's (12) while a page fills the window (FULL).
-static CORNER_RADIUS: AtomicU32 = AtomicU32::new(22);
+/// The windows in FULL (by label): their pages as round as the window.
+static FULL: Mutex<Option<HashSet<String>>> = Mutex::new(None);
+
+fn is_full(ui: &str) -> bool {
+    FULL.lock().is_ok_and(|f| f.as_ref().is_some_and(|f| f.contains(ui)))
+}
 
 /// Rounded corners like the cards in the other Re apps, and no background of its own.
 #[cfg(target_os = "macos")]
 fn round_corners<R: Runtime>(webview: &Webview<R>) {
-    let radius = CORNER_RADIUS.load(Ordering::Relaxed) as f64;
+    let radius = if is_full(webview.window().label()) { 12.0 } else { 22.0 };
     use objc2::msg_send;
     use objc2::runtime::AnyObject;
 
@@ -405,9 +430,11 @@ fn search_script() -> &'static str {
     })
 }
 
-fn create_tab<R: Runtime>(app: &AppHandle<R>, id: u64, url: Url, bounds: &Bounds) -> CmdResult<Webview<R>> {
-    let window = app.get_window("main").ok_or("No window")?;
+fn create_tab<R: Runtime>(app: &AppHandle<R>, window: &tauri::Window<R>, id: u64, url: Url, bounds: &Bounds) -> CmdResult<Webview<R>> {
     let (load_app, title_app, open_app) = (app.clone(), app.clone(), app.clone());
+    // what the page does goes to its own window's UI
+    let ui = window.label().to_string();
+    let (load_ui, title_ui, open_ui) = (ui.clone(), ui.clone(), ui);
     let builder = WebviewBuilder::new(label(id), WebviewUrl::External(url))
         .user_agent(user_agent())
         // the ads the rule list can't reach (YouTube's): see adblock.js
@@ -422,26 +449,26 @@ fn create_tab<R: Runtime>(app: &AppHandle<R>, id: u64, url: Url, bounds: &Bounds
             if eink {
                 let _ = webview.eval(eink_script(true));
             }
-            if is_full() {
+            if is_full(&load_ui) {
                 let _ = webview.eval(full_script(true));
             }
             if !loading {
-                let icon_app = load_app.clone();
+                let (icon_app, icon_ui) = (load_app.clone(), load_ui.clone());
                 let _ = webview.eval_with_callback(ICON_SCRIPT, move |result| {
                     if let Ok(icon) = serde_json::from_str::<String>(&result) {
-                        to_ui(&icon_app, "tab", TabEvent { id, icon: Some(icon), ..Default::default() });
+                        to_ui(&icon_app, &icon_ui, "tab", TabEvent { id, icon: Some(icon), ..Default::default() });
                     }
                 });
             }
             let url = Some(payload.url().to_string());
-            to_ui(&load_app, "tab", TabEvent { id, url, loading: Some(loading), ..Default::default() });
+            to_ui(&load_app, &load_ui, "tab", TabEvent { id, url, loading: Some(loading), ..Default::default() });
         })
         .on_document_title_changed(move |_, title| {
-            to_ui(&title_app, "tab", TabEvent { id, title: Some(title), ..Default::default() });
+            to_ui(&title_app, &title_ui, "tab", TabEvent { id, title: Some(title), ..Default::default() });
         })
         // links that want a new window (target=_blank, window.open) open as a new tab
         .on_new_window(move |url, _| {
-            to_ui(&open_app, "open", url.to_string());
+            to_ui(&open_app, &open_ui, "open", url.to_string());
             NewWindowResponse::Deny
         });
     let size = LogicalSize::new(bounds.width.max(1.0), bounds.height.max(1.0));
@@ -472,10 +499,12 @@ fn save_state(state: State<AppState>, json: String) -> CmdResult<()> {
 
 // ── tabs ──
 
-/// Shows tab `id` over the page card (creating its webview the first time) and hides the rest.
+/// Shows tab `id` over the page card of the asking UI's window (creating its webview the first time)
+/// and hides the window's other tabs.
 #[tauri::command]
-fn show_tab(app: AppHandle, id: u64, url: String, bounds: Bounds, focus: bool) -> CmdResult<()> {
-    for webview in tabs(&app).filter(|w| w.label() != label(id)) {
+fn show_tab(app: AppHandle, ui: Webview, id: u64, url: String, bounds: Bounds, focus: bool) -> CmdResult<()> {
+    let window = ui.window();
+    for webview in tabs_in(&app, window.label()).into_iter().filter(|w| w.label() != label(id)) {
         let _ = webview.hide();
     }
     let webview = match app.get_webview(&label(id)) {
@@ -484,7 +513,7 @@ fn show_tab(app: AppHandle, id: u64, url: String, bounds: Bounds, focus: bool) -
             webview.show().map_err(err)?;
             webview
         }
-        None => create_tab(&app, id, Url::parse(&url).map_err(err)?, &bounds)?,
+        None => create_tab(&app, &window, id, Url::parse(&url).map_err(err)?, &bounds)?,
     };
     if focus {
         webview.set_focus().map_err(err)?;
@@ -494,14 +523,11 @@ fn show_tab(app: AppHandle, id: u64, url: String, bounds: Bounds, focus: bool) -
 
 /// Start page and popups: no page on top of the UI, and the UI gets the keyboard.
 #[tauri::command]
-fn hide_tabs(app: AppHandle) -> CmdResult<()> {
-    for webview in tabs(&app) {
+fn hide_tabs(app: AppHandle, ui: Webview) -> CmdResult<()> {
+    for webview in tabs_in(&app, ui.window().label()) {
         let _ = webview.hide();
     }
-    if let Some(ui) = app.get_webview("main") {
-        ui.set_focus().map_err(err)?;
-    }
-    Ok(())
+    ui.set_focus().map_err(err)
 }
 
 #[tauri::command]
@@ -566,24 +592,22 @@ fn set_eink(app: AppHandle, state: State<AppState>, on: bool) {
     }
 }
 
-fn is_full() -> bool {
-    CORNER_RADIUS.load(Ordering::Relaxed) == 12
-}
-
 /// The page hears of FULL (html.resurf-full): search results put their buttons where ReSurf's own are.
 fn full_script(on: bool) -> String {
     format!("document.documentElement.classList.toggle('resurf-full', {on})")
 }
 
-/// FULL: the pages as round as the window, or back to the card's corners.
+/// FULL (in the asking UI's window): its pages as round as the window, or back to the card's corners.
 #[tauri::command]
-fn set_full(app: AppHandle, on: bool) {
-    CORNER_RADIUS.store(if on { 12 } else { 22 }, Ordering::Relaxed);
-    for webview in tabs(&app) {
-        let _ = webview.eval(full_script(on));
+fn set_full(app: AppHandle, ui: Webview, on: bool) {
+    let window = ui.window();
+    if let Ok(mut full) = FULL.lock() {
+        let full = full.get_or_insert_with(HashSet::new);
+        if on { full.insert(window.label().to_string()); } else { full.remove(window.label()); }
     }
-    #[cfg(target_os = "macos")]
-    for webview in tabs(&app) {
+    for webview in tabs_in(&app, window.label()) {
+        let _ = webview.eval(full_script(on));
+        #[cfg(target_os = "macos")]
         round_corners(&webview);
     }
 }
@@ -637,6 +661,7 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         true,
         &[
             &item("new", "New Tab", "CmdOrCtrl+T")?,
+            &item("new-window", "New Window", "CmdOrCtrl+N")?,
             &item("address", "Edit Address", "CmdOrCtrl+L")?,
             &item("close", "Close Tab", "CmdOrCtrl+W")?,
             &item("favo", "Favourite", "CmdOrCtrl+D")?,
@@ -939,20 +964,20 @@ fn listen_for_desk_corners(app: &tauri::AppHandle) {
             }
             let corners = number(c"corners") as u32;
             let Some(app) = DESK_APP.get() else { return };
-            // the interface's webview (its window holds the tabs' webviews too)
-            let Some(webview) = app.get_webview("main") else { return };
-            let window = webview.window();
-            // this app's window there? (a second one of its windows is not this)
-            let scale = window.scale_factor().unwrap_or(1.0);
-            if let (Ok(at), Ok(size)) = (window.outer_position(), window.outer_size()) {
-                let near = |a: f64, b: f64| (a - b).abs() < 24.0;
-                if !(near(at.x as f64 / scale, number(c"x")) && near(at.y as f64 / scale, number(c"y"))
-                    && near(size.width as f64 / scale, number(c"w")) && near(size.height as f64 / scale, number(c"h")))
+            // which of the app's windows it is: the one with that frame; its interface's webview
+            // (the window holds the tabs' webviews too) has the window's label
+            let near = |a: f64, b: f64| (a - b).abs() < 24.0;
+            for window in app.windows().into_values() {
+                let scale = window.scale_factor().unwrap_or(1.0);
+                let (Ok(at), Ok(size)) = (window.outer_position(), window.outer_size()) else { continue };
+                if near(at.x as f64 / scale, number(c"x")) && near(at.y as f64 / scale, number(c"y"))
+                    && near(size.width as f64 / scale, number(c"w")) && near(size.height as f64 / scale, number(c"h"))
                 {
-                    return;
+                    if let Some(webview) = app.get_webview(window.label()) {
+                        set_corners(&webview, corners);
+                    }
                 }
             }
-            set_corners(&webview, corners);
         }
     });
     // SAFETY: AppKit's own objects, on the main thread (setup); the center keeps the block
@@ -1013,6 +1038,43 @@ fn fade_on_close(window: &tauri::Window, event: &tauri::WindowEvent) {
 }
 
 
+// ── more windows: ⌘N ──
+
+/// Windows opened so far (the first is "main"): the next one's label.
+static WINDOW_COUNT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(1);
+
+/// ⌘N (the menu): another window, as the first one is (tauri.conf.json), with tabs of its own: the
+/// size of the one in front, a little lower and to the right of it. It fades in once its interface
+/// has drawn itself (window_ready).
+#[tauri::command]
+async fn new_window(app: AppHandle) -> CmdResult<()> {
+    let n = WINDOW_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
+    let mut config = app.config().app.windows.first().cloned().ok_or("No window to copy")?;
+    config.label = format!("w{n}");
+    let mut place = None;
+    if let Some(front) = front_window(&app) {
+        let scale = front.scale_factor().unwrap_or(1.0);
+        if let (Ok(at), Ok(size)) = (front.outer_position(), front.inner_size()) {
+            config.center = false;
+            config.width = size.width as f64 / scale;
+            config.height = size.height as f64 / scale;
+            place = Some((at.x as f64 / scale + 28.0, at.y as f64 / scale + 28.0));
+        }
+    }
+    let mut builder = tauri::WebviewWindowBuilder::from_config(&app, &config).map_err(err)?;
+    if let Some((x, y)) = place {
+        builder = builder.position(x, y);
+    }
+    let window = builder.build().map_err(err)?;
+    #[cfg(target_os = "macos")]
+    {
+        round_window(&window);
+        let _ = window.with_webview(|platform| one_cursor::install(platform.inner() as *mut objc2::runtime::AnyObject));
+    }
+    reveal(&window.as_ref().window(), std::time::Duration::from_secs(3));
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -1040,7 +1102,16 @@ pub fn run() {
             app.manage(AppState { state_file: dir.join("state.json"), eink: AtomicBool::new(false) });
 
             app.set_menu(build_menu(app.handle())?)?;
-            app.on_menu_event(|app, event| to_ui(app, "menu", event.id().0.clone()));
+            app.on_menu_event(|app, event| {
+                if event.id().0 == "new-window" {
+                    let app = app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        let _ = new_window(app).await;
+                    });
+                } else if let Some(window) = front_window(app) {
+                    to_ui(app, window.label(), "menu", event.id().0.clone());
+                }
+            });
 
             #[cfg(target_os = "macos")]
             {
@@ -1057,6 +1128,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             window_ready,
+            new_window,
             load_state,
             save_state,
             show_tab,
