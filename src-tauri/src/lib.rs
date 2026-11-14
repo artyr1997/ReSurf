@@ -691,7 +691,11 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         app,
         "Window",
         true,
-        &[&PredefinedMenuItem::minimize(app, None)?, &PredefinedMenuItem::maximize(app, None)?],
+        &[
+            &PredefinedMenuItem::minimize(app, None)?,
+            &PredefinedMenuItem::maximize(app, None)?,
+            &item("close-window", "Close Window", "CmdOrCtrl+Shift+W")?,
+        ],
     )?;
     Menu::with_items(app, &[&app_menu, &edit, &tabs, &view, &window])
 }
@@ -963,6 +967,8 @@ fn listen_for_desk_corners(app: &tauri::AppHandle) {
                 return;
             }
             let corners = number(c"corners") as u32;
+            // pinned by ReDesk (⌃⌥P): the page writes PIN down its left side
+            let pinned = number(c"pinned") == 1.0;
             let Some(app) = DESK_APP.get() else { return };
             // which of the app's windows it is: the one with that frame; its interface's webview
             // (the window holds the tabs' webviews too) has the window's label
@@ -975,6 +981,7 @@ fn listen_for_desk_corners(app: &tauri::AppHandle) {
                 {
                     if let Some(webview) = app.get_webview(window.label()) {
                         set_corners(&webview, corners);
+                        let _ = tauri::Emitter::emit_to(app, window.label(), "pinned", pinned);
                     }
                 }
             }
@@ -1108,6 +1115,10 @@ pub fn run() {
                     tauri::async_runtime::spawn(async move {
                         let _ = new_window(app).await;
                     });
+                } else if event.id().0 == "close-window" {
+                    if let Some(window) = front_window(app) {
+                        let _ = window.close();
+                    }
                 } else if let Some(window) = front_window(app) {
                     to_ui(app, window.label(), "menu", event.id().0.clone());
                 }
