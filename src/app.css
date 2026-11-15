@@ -254,7 +254,8 @@ input:focus::placeholder {
 	}
 
 	.corner {
-		display: block;
+		/* a small window has no buttons: the keys only */
+		display: none !important;
 		position: fixed;
 		z-index: 10;
 		background: transparent;
