@@ -898,6 +898,37 @@ fn fade_windows_in_and_out() {
             let app: *mut AnyObject = msg_send![class!(NSApplication), sharedApplication];
             let hidden: bool = msg_send![app, isHidden];
             let said = CStr::from_ptr(text).to_bytes();
+            // "hide-window <pid> <number>" / "show-window …": one window of this app, out of sight on another
+            // of ReDesk's desktops (it fades out, then goes), or back (it fades in); its app's others stay
+            if let Ok(words) = std::str::from_utf8(said) {
+                let one = words.strip_prefix("hide-window ").map(|rest| (true, rest)).or_else(|| words.strip_prefix("show-window ").map(|rest| (false, rest)));
+                if let Some((hide, rest)) = one {
+                    let mut parts = rest.split(' ');
+                    let pid = parts.next().and_then(|p| p.parse::<u32>().ok());
+                    let number = parts.next().and_then(|n| n.parse::<isize>().ok());
+                    if let (Some(pid), Some(number)) = (pid, number) {
+                        if pid == std::process::id() {
+                            let window: *mut AnyObject = msg_send![app, windowWithWindowNumber: number];
+                            if !window.is_null() {
+                                if hide {
+                                    let gone = window as usize;
+                                    let done = RcBlock::new(move || {
+                                        let window = gone as *mut AnyObject;
+                                        let _: () = msg_send![window, orderOut: std::ptr::null::<AnyObject>()];
+                                        let _: () = msg_send![window, setAlphaValue: 1.0f64];
+                                    });
+                                    fade_windows(&[window], 0.0, Some(&done));
+                                } else {
+                                    let _: () = msg_send![window, setAlphaValue: 0.0f64];
+                                    let _: () = msg_send![window, orderFront: std::ptr::null::<AnyObject>()];
+                                    fade_windows(&[window], 1.0, None);
+                                }
+                            }
+                        }
+                    }
+                    return;
+                }
+            }
             // "hide <pid>": this app alone (ReDesk's own desktops)
             let mine = format!("hide {}", std::process::id());
             if said == mine.as_bytes() {
