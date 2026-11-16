@@ -294,4 +294,23 @@ input:focus::placeholder {
 	}
 }
 
+/* ── Glass (ReDesk's Settings › Glass windows, an experiment): the window is the blur of what is behind
+   it (lib/glass.ts), the page clear on it, written in the desk's ink: white, as the words on the desk.
+   --bg stays a dark solid for what is written in it (an inked word, a pressed button) and the popups. ── */
+html.glass {
+	--bg: #1f2023 !important;
+	--text: rgba(255, 255, 255, 0.92) !important;
+	--line: rgba(255, 255, 255, 0.5) !important;
+	--muted: rgba(255, 255, 255, 0.6) !important;
+	--accent: rgba(255, 255, 255, 0.92) !important;
+	--border: rgba(255, 255, 255, 0.5) !important;
+	--border-mid: rgba(255, 255, 255, 0.5) !important;
+	--light-off: rgba(255, 255, 255, 0.25) !important;
+	color-scheme: dark;
+}
 
+html.glass,
+html.glass body,
+html.glass :is(.viewer, .reader, .edit-screen) {
+	background: transparent !important;
+}

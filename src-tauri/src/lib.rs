@@ -1166,6 +1166,117 @@ fn listen_for_desk_language(app: &tauri::AppHandle) {
 }
 
 
+// ── glass: ReDesk's Settings › Glass windows (an experiment) ──
+
+/// Whether ReDesk keeps the windows as glass, read from its settings.
+#[tauri::command]
+fn desk_glass() -> bool {
+    std::process::Command::new("/usr/bin/defaults")
+        .args(["read", "com.artursavytskyi.redesk", "glass"])
+        .output()
+        .map(|out| String::from_utf8_lossy(&out.stdout).trim() == "1")
+        .unwrap_or(false)
+}
+
+/// The window as glass, or paper again: the system's blur of what is behind it (the dark HUD material, as
+/// the desk's white words read on it) under the page, inside the web view, so its rounded corners round it
+/// too. The page itself goes clear (html.glass in app.css).
+#[tauri::command]
+fn set_glass(window: tauri::WebviewWindow, on: bool) {
+    #[cfg(target_os = "macos")]
+    let _ = window.with_webview(move |platform| {
+        use objc2::runtime::AnyObject;
+        use objc2::{class, msg_send};
+        let view = platform.inner() as *mut AnyObject;
+        if view.is_null() {
+            return;
+        }
+        // SAFETY: the live WKWebView and AppKit's own classes, on the main thread
+        unsafe {
+            let name: *mut AnyObject = msg_send![class!(NSString), stringWithUTF8String: c"re-glass".as_ptr()];
+            let subviews: *mut AnyObject = msg_send![view, subviews];
+            let count: usize = msg_send![subviews, count];
+            let mut glass: *mut AnyObject = std::ptr::null_mut();
+            for i in 0..count {
+                let sub: *mut AnyObject = msg_send![subviews, objectAtIndex: i];
+                let id: *mut AnyObject = msg_send![sub, identifier];
+                if !id.is_null() && msg_send![id, isEqualToString: name] {
+                    glass = sub;
+                    break;
+                }
+            }
+            if !on {
+                if !glass.is_null() {
+                    let _: () = msg_send![glass, removeFromSuperview];
+                }
+                return;
+            }
+            if !glass.is_null() {
+                return;
+            }
+            let effect: *mut AnyObject = msg_send![class!(NSVisualEffectView), alloc];
+            let effect: *mut AnyObject = msg_send![effect, init];
+            let _: () = msg_send![effect, setIdentifier: name];
+            let _: () = msg_send![effect, setMaterial: 13isize]; // NSVisualEffectMaterialHUDWindow
+            let _: () = msg_send![effect, setBlendingMode: 0isize]; // behind the window
+            let _: () = msg_send![effect, setState: 1isize]; // always active
+            let dark: *mut AnyObject = msg_send![class!(NSString), stringWithUTF8String: c"NSAppearanceNameDarkAqua".as_ptr()];
+            let appearance: *mut AnyObject = msg_send![class!(NSAppearance), appearanceNamed: dark];
+            let _: () = msg_send![effect, setAppearance: appearance];
+            let _: () = msg_send![effect, setTranslatesAutoresizingMaskIntoConstraints: false];
+            // under the page
+            let _: () = msg_send![view, addSubview: effect, positioned: -1isize, relativeTo: std::ptr::null::<AnyObject>()];
+            for edge in [c"leadingAnchor", c"trailingAnchor", c"topAnchor", c"bottomAnchor"] {
+                let sel = objc2::runtime::Sel::register(edge);
+                let a: *mut AnyObject = msg_send![effect, performSelector: sel];
+                let b: *mut AnyObject = msg_send![view, performSelector: sel];
+                let c: *mut AnyObject = msg_send![a, constraintEqualToAnchor: b];
+                let _: () = msg_send![c, setActive: true];
+            }
+            let _: () = msg_send![effect, release];
+        }
+    });
+}
+
+#[cfg(target_os = "macos")]
+static GLASS_APP: std::sync::OnceLock<tauri::AppHandle> = std::sync::OnceLock::new();
+
+/// ReDesk says when the windows turn to glass or back (a distributed notification, "1" or "0" as its
+/// object): every window gets a `glass` event.
+#[cfg(target_os = "macos")]
+fn listen_for_desk_glass(app: &tauri::AppHandle) {
+    use block2::RcBlock;
+    use objc2::runtime::AnyObject;
+    use objc2::{class, msg_send};
+
+    let _ = GLASS_APP.set(app.clone());
+    let handler = RcBlock::new(|note: *mut AnyObject| {
+        // SAFETY: on the main queue; the object ReDesk sends is a string
+        unsafe {
+            let object: *mut AnyObject = msg_send![note, object];
+            let on = if object.is_null() {
+                false
+            } else {
+                let utf8: *const std::ffi::c_char = msg_send![object, UTF8String];
+                !utf8.is_null() && std::ffi::CStr::from_ptr(utf8).to_bytes() == b"1"
+            };
+            if let Some(app) = GLASS_APP.get() {
+                let _ = tauri::Emitter::emit(app, "glass", on);
+            }
+        }
+    });
+    // SAFETY: AppKit's own objects, on the main thread (setup); the center keeps the block
+    unsafe {
+        let center: *mut AnyObject = msg_send![class!(NSDistributedNotificationCenter), defaultCenter];
+        let name: *mut AnyObject =
+            msg_send![class!(NSString), stringWithUTF8String: c"com.artursavytskyi.re.glass".as_ptr()];
+        let queue: *mut AnyObject = msg_send![class!(NSOperationQueue), mainQueue];
+        let _: *mut AnyObject = msg_send![center, addObserverForName: name, object: std::ptr::null::<AnyObject>(),
+                                          queue: queue, usingBlock: &*handler];
+    }
+}
+
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -1188,6 +1299,8 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             listen_for_desk_corners(app.handle());
             listen_for_desk_language(app.handle());
+            #[cfg(target_os = "macos")]
+            listen_for_desk_glass(app.handle());
             // ~/Library/Application Support/<identifier>/ on macOS
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
@@ -1224,6 +1337,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             desk_language,
+            desk_glass,
+            set_glass,
             window_ready,
             new_window,
             load_state,

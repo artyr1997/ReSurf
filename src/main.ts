@@ -4,6 +4,7 @@ import '@fontsource/noto-sans-jp/400.css';
 import '@fontsource/noto-sans-jp/500.css';
 import './app.css';
 import { followDeskLanguage } from './lib/lang.svelte';
+import { followDeskGlass } from './lib/glass';
 import { invoke } from '@tauri-apps/api/core';
 import { mount } from 'svelte';
 import App from './App.svelte';
@@ -17,3 +18,5 @@ export default app;
 
 // the side buttons in the desk's language (ReDesk › Settings › Language)
 followDeskLanguage();
+// the window as glass, when ReDesk says so (Settings › Glass windows)
+followDeskGlass();
