@@ -314,3 +314,29 @@ html.glass body,
 html.glass :is(.viewer, .reader, .edit-screen) {
 	background: transparent !important;
 }
+
+/* on glass every word is in M PLUS 1p, but the app's buttons, which keep their own lettering */
+html.glass,
+html.glass body,
+html.glass *:not(:is(.side, .side *, .corner, .corner *, .pop-btn, .pop-btn *, .compact-btn, .compact-btn *,
+	.exit, .imp, .exp, .nav-home, .nav-info, .nav-edit, .nav-corner, .nav-button, .nav-button *, .nav-btn, .nav-btn *,
+	.start-button, .start-button *, .kofi-button, .kofi-button *, button.play, button.play *, button.paused, button.paused *,
+	.rub-word, .rub-word *, .mini-btn, .mini-btn *)) {
+	font-family: 'M PLUS 1p', sans-serif !important;
+}
+
+/* on glass no brush: a word marked is underlined, a button chosen is framed in white */
+html.glass :is(.ink-mark, .note-editor mark) {
+	background: none !important;
+	color: var(--text) !important;
+	text-decoration: underline;
+	text-decoration-thickness: 1.5px;
+	text-underline-offset: 0.3em;
+}
+
+html.glass :is(.ink-mark-v, .side.ink-mark-v, button.play .ink-mark, button.paused .ink-mark, .rub-word .ink-mark) {
+	background: none !important;
+	color: var(--text) !important;
+	text-decoration: none;
+	box-shadow: inset 0 0 0 2px var(--text);
+}
