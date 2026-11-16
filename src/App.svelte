@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from './lib/lang.svelte';
 	// The browser. Favourites run down the left edge, the other open tabs down the
 	// right one. The page sits in the card in the middle: it is a native webview
 	// that Rust lays over the card (show_tab), so whenever the UI needs that space
@@ -407,13 +408,13 @@
 {/snippet}
 
 <!-- left: new tab, favourites, info -->
-<button class="side plain nav-new" onclick={newTab} title="New tab (⌘T)">NEW</button>
+<button class="side plain nav-new" onclick={newTab} title="New tab (⌘T)">{t('NEW')}</button>
 <nav class="column left scroll" use:scrollFade>
 	<div class="icons">
 		{#each favorites as tab (tab.id)}{@render icon(tab)}{/each}
 	</div>
 </nav>
-<button class="side plain nav-info" onclick={() => (popup = 'info')} title="Info (⌘I)">INFO</button>
+<button class="side plain nav-info" onclick={() => (popup = 'info')} title="Info (⌘I)">{t('INFO')}</button>
 
 <!-- right: favourite switch, the other tabs, full -->
 <button
@@ -422,13 +423,13 @@
 	onclick={() => toggleFavorite(active)}
 	disabled={!current}
 	title="Favourite (⌘D)"
->FAVO</button>
+>{t('FAVO')}</button>
 <nav class="column right scroll" use:scrollFade>
 	<div class="icons">
 		{#each others as tab (tab.id)}{@render icon(tab)}{/each}
 	</div>
 </nav>
-<button class="side switch nav-full" class:ink-mark-v={full} onclick={toggleFull} title="Page fills the window (⌘⇧F)">FULL</button>
+<button class="side switch nav-full" class:ink-mark-v={full} onclick={toggleFull} title="Page fills the window (⌘⇧F)">{t('FULL')}</button>
 
 <!-- a small window: no columns, tabs are walked with ⌥ ↑ / ⌥ ↓ -->
 <button class="corner top-right" onclick={newTab} title="New tab (⌘T)">NEW</button>

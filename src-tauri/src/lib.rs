@@ -1113,6 +1113,59 @@ async fn new_window(app: AppHandle) -> CmdResult<()> {
     Ok(())
 }
 
+// ── the desk's language: ReDesk's Settings › Language (English or Japanese) ──
+
+/// The language ReDesk keeps ("en" or "ja"), read from its settings.
+#[tauri::command]
+fn desk_language() -> String {
+    std::process::Command::new("/usr/bin/defaults")
+        .args(["read", "com.artursavytskyi.redesk", "language"])
+        .output()
+        .ok()
+        .map(|out| String::from_utf8_lossy(&out.stdout).trim().to_string())
+        .filter(|l| l == "ja")
+        .unwrap_or_else(|| "en".into())
+}
+
+#[cfg(target_os = "macos")]
+static LANGUAGE_APP: std::sync::OnceLock<tauri::AppHandle> = std::sync::OnceLock::new();
+
+/// ReDesk says when its language changes (a distributed notification, the language as its object): every
+/// window gets a `language` event and writes its buttons in it.
+#[cfg(target_os = "macos")]
+fn listen_for_desk_language(app: &tauri::AppHandle) {
+    use block2::RcBlock;
+    use objc2::runtime::AnyObject;
+    use objc2::{class, msg_send};
+
+    let _ = LANGUAGE_APP.set(app.clone());
+    let handler = RcBlock::new(|note: *mut AnyObject| {
+        // SAFETY: on the main queue; the object ReDesk sends is a string
+        unsafe {
+            let object: *mut AnyObject = msg_send![note, object];
+            let language = if object.is_null() {
+                "en".to_string()
+            } else {
+                let utf8: *const std::ffi::c_char = msg_send![object, UTF8String];
+                if utf8.is_null() { "en".into() } else { std::ffi::CStr::from_ptr(utf8).to_string_lossy().into_owned() }
+            };
+            if let Some(app) = LANGUAGE_APP.get() {
+                let _ = tauri::Emitter::emit(app, "language", language);
+            }
+        }
+    });
+    // SAFETY: AppKit's own objects, on the main thread (setup); the center keeps the block
+    unsafe {
+        let center: *mut AnyObject = msg_send![class!(NSDistributedNotificationCenter), defaultCenter];
+        let name: *mut AnyObject =
+            msg_send![class!(NSString), stringWithUTF8String: c"com.artursavytskyi.re.language".as_ptr()];
+        let queue: *mut AnyObject = msg_send![class!(NSOperationQueue), mainQueue];
+        let _: *mut AnyObject = msg_send![center, addObserverForName: name, object: std::ptr::null::<AnyObject>(),
+                                          queue: queue, usingBlock: &*handler];
+    }
+}
+
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -1134,6 +1187,7 @@ pub fn run() {
             fade_windows_in_and_out();
             #[cfg(target_os = "macos")]
             listen_for_desk_corners(app.handle());
+            listen_for_desk_language(app.handle());
             // ~/Library/Application Support/<identifier>/ on macOS
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
@@ -1169,6 +1223,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            desk_language,
             window_ready,
             new_window,
             load_state,
