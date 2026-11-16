@@ -413,6 +413,14 @@ fn focus_page(uri: &str) -> Vec<u8> {
     .into_bytes()
 }
 
+/// Glass (ReDesk's Settings › Glass windows): the tabs' pages are told too, so Google's results ReSurf draws
+/// (search.js) are written on the glass, as ReSurf's own page is.
+static TAB_GLASS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+fn glass_script(on: bool) -> String {
+    format!("document.documentElement.classList.toggle('resurf-glass', {on})")
+}
+
 /// search.js with the ink brushstroke's pieces (public/ink), across and down, put in.
 fn search_script() -> &'static str {
     static SCRIPT: std::sync::OnceLock<String> = std::sync::OnceLock::new();
@@ -445,6 +453,9 @@ fn create_tab<R: Runtime>(app: &AppHandle<R>, window: &tauri::Window<R>, id: u64
         .initialization_script(search_script())
         .on_page_load(move |webview, payload| {
             let loading = payload.event() == PageLoadEvent::Started;
+            if TAB_GLASS.load(Ordering::Relaxed) {
+                let _ = webview.eval(glass_script(true));
+            }
             let eink = load_app.state::<AppState>().eink.load(Ordering::Relaxed);
             if eink {
                 let _ = webview.eval(eink_script(true));
@@ -1271,6 +1282,10 @@ fn listen_for_desk_glass(app: &tauri::AppHandle) {
             };
             if let Some(app) = GLASS_APP.get() {
                 let _ = tauri::Emitter::emit(app, "glass", on);
+                TAB_GLASS.store(on, Ordering::Relaxed);
+                for webview in tabs(app) {
+                    let _ = webview.eval(glass_script(on));
+                }
             }
         }
     });
@@ -1310,6 +1325,7 @@ pub fn run() {
             listen_for_desk_language(app.handle());
             #[cfg(target_os = "macos")]
             listen_for_desk_glass(app.handle());
+            TAB_GLASS.store(desk_glass(), Ordering::Relaxed);
             // ~/Library/Application Support/<identifier>/ on macOS
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;

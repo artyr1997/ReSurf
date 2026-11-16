@@ -40,7 +40,7 @@
 	const bottom = svg(`__BRUSH_BOTTOM__`);
 
 	const css = `
-		@import url('https://fonts.googleapis.com/css2?family=Kurale&family=Noto+Sans+JP:wght@300;400&display=swap');
+		@import url('https://fonts.googleapis.com/css2?family=Kurale&family=Noto+Sans+JP:wght@300;400&family=M+PLUS+1p:wght@300;400&display=swap');
 		/* held while the results are found: Google's page hidden, and see-through too, as some of its bits
 		   (the ⋮ menus) make themselves visible again inside a hidden part; opacity can't be undone from inside.
 		   The buttons at the sides stay, so they don't blink away while another kind or page loads. */
@@ -147,6 +147,21 @@
 			opacity: 1; color: var(--bg); background: var(--ink);
 			-webkit-mask: ${top} center top / 100% auto no-repeat, ${bottom} center bottom / 100% auto no-repeat,
 				${midV} center 0.65em / 100% calc(100% - 1.3em) no-repeat;
+		}
+		/* glass (html.resurf-glass, from lib.rs): written on it as ReSurf's own page is, in the desk's white
+		   ink and M PLUS 1p; no brush: the chosen title underlined, the chosen kind framed */
+		html.resurf-glass.resurf-search, html.resurf-glass.resurf-hold {
+			--bg: #1f2023; --text: rgba(255, 255, 255, 0.8); --line: rgba(255, 255, 255, 0.5);
+			--ink: rgba(255, 255, 255, 0.8); color-scheme: dark;
+		}
+		html.resurf-glass #resurf-search, html.resurf-glass #resurf-search .re-site { font-family: 'M PLUS 1p', sans-serif; }
+		html.resurf-glass #resurf-search li.re-on .re-title {
+			background: none; color: var(--text); text-decoration: underline;
+			text-decoration-thickness: 1.5px; text-underline-offset: 0.3em;
+		}
+		html.resurf-glass #resurf-search .re-grid li.re-on a { box-shadow: 0 0 0 2px var(--text); }
+		html.resurf-glass #resurf-kinds a.re-on {
+			background: none; -webkit-mask: none; color: var(--text); box-shadow: inset 0 0 0 2px var(--text);
 		}
 	`;
 	const style = document.createElement('style');
