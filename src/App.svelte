@@ -408,7 +408,7 @@
 {/snippet}
 
 <!-- left: new tab, favourites, info -->
-<button class="side plain nav-new" onclick={newTab} title="New tab (⌘T)">{t('NEW')}</button>
+<button class="side plain nav-new" onclick={newTab} title="New tab (⌘T)">{t('NEW', 'NEW TAB')}</button>
 <nav class="column left scroll" use:scrollFade>
 	<div class="icons">
 		{#each favorites as tab (tab.id)}{@render icon(tab)}{/each}

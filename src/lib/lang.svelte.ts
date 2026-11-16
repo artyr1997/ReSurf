@@ -5,45 +5,45 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
 const japanese: Record<string, string> = {
-	// ReFile
-	COLM: '列',
-	LIST: '一覧',
-	INFO: '情報',
-	DEL: '削除',
-	SONG: '曲',
-	LIVE: 'ラジオ',
-	MINI: 'ミニ',
-	PREV: '前',
-	NEXT: '次',
-	READ: '読む',
-	ADD: '追加',
-	EDIT: '編集',
-	NEW: '新規',
-	CLOSE: '閉じる',
-	BACK: '戻る',
-	FULL: '全画面',
-	MANGA: '漫画',
-	// ReSurf
-	FAVO: '好き',
-	// ReDraw
-	PEN: 'ペン',
-	BRUSH: '筆',
-	UNDO: '戻す',
-	PAD: 'パッド',
-	SAVE: '保存',
-	RUB: '消す',
-	// ReNote
-	EXIT: '終了',
-	IMP: '読込',
-	EXP: '書出',
-	HOME: 'ホーム',
+	// four characters each, as the English words are four letters
+	COLM: '縦列表示',
+	LIST: '一覧表示',
+	INFO: '詳細情報',
+	DEL: '削除する',
+	SONG: '楽曲一覧',
+	LIVE: 'ラジオ局',
+	MINI: 'ミニ表示',
+	PREV: '前の曲へ',
+	NEXT: '次の曲へ',
+	READ: '中を見る',
+	ADD: '追加する',
+	EDIT: '編集する',
+	NEW: '新規作成',
+	CLOSE: '閲覧終了',
+	BACK: '前に戻る',
+	FULL: '全画面化',
+	MANGA: '右から左',
+	FAVO: '栞を挟む',
+	PEN: 'ペン書き',
+	BRUSH: '筆で書く',
+	UNDO: '元に戻す',
+	PAD: '指で描く',
+	SAVE: '保存する',
+	RUB: '消しゴム',
+	EXIT: '編集終了',
+	IMP: '読み込み',
+	EXP: '書き出し',
+	HOME: 'ホームへ',
+	'NEW TAB': '新規タブ',
+	'FULL NOTE': '全文表示',
+	'NEXT SPACE': '次の場所',
 };
 
 export const language = $state({ japanese: false });
 
-/** a button's word in the desk's language */
-export function t(word: string): string {
-	return language.japanese ? (japanese[word] ?? word) : word;
+/** a button's word in the desk's language; `as` names it where the same word means another thing (NEW TAB) */
+export function t(word: string, as?: string): string {
+	return language.japanese ? (japanese[as ?? word] ?? word) : word;
 }
 
 function set(code: string) {
