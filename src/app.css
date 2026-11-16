@@ -346,3 +346,8 @@ html.glass :is(.ink-mark-v, .side.ink-mark-v, button.play .ink-mark, button.paus
 	text-decoration: none;
 	box-shadow: inset 0 0 0 2px var(--text);
 }
+
+/* on glass a frame means chosen: the buttons boxed just for their look (BACK, NEW, NEXT…) go without */
+html.glass :is(.side.boxed, .nav-btn, .nav-button, .v-btn, .v-btn-left, .nav-edit, .nav-info, .edit, .info, .start-button, .kofi-button):not(.ink-mark-v) {
+	border-color: transparent !important;
+}
