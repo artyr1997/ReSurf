@@ -309,6 +309,12 @@ html.glass {
 	color-scheme: dark;
 }
 
+/* the page's card square too, as the windows on glass are */
+html.glass .card {
+	border-radius: 0 !important;
+	box-shadow: none !important;
+}
+
 html.glass,
 html.glass body,
 html.glass :is(.viewer, .reader, .edit-screen) {

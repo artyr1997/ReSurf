@@ -146,7 +146,8 @@ fn is_full(ui: &str) -> bool {
 /// Rounded corners like the cards in the other Re apps, and no background of its own.
 #[cfg(target_os = "macos")]
 fn round_corners<R: Runtime>(webview: &Webview<R>) {
-    let radius = if is_full(webview.window().label()) { 12.0 } else { 22.0 };
+    // on glass square, as the windows are
+    let radius = if TAB_GLASS.load(Ordering::Relaxed) { 0.0 } else if is_full(webview.window().label()) { 12.0 } else { 22.0 };
     use objc2::msg_send;
     use objc2::runtime::AnyObject;
 
@@ -1285,6 +1286,7 @@ fn listen_for_desk_glass(app: &tauri::AppHandle) {
                 TAB_GLASS.store(on, Ordering::Relaxed);
                 for webview in tabs(app) {
                     let _ = webview.eval(glass_script(on));
+                    round_corners(&webview);
                 }
             }
         }
