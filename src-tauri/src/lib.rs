@@ -1183,9 +1183,9 @@ fn desk_glass() -> bool {
 
 /// The window as glass, or paper again: the system's blur of what is behind it (the dark HUD material, as
 /// the desk's white words read on it) under the page, inside the web view, so its rounded corners round it
-/// too. The page itself goes clear (html.glass in app.css).
+/// too. The page itself goes clear (html.glass in app.css). `sharp`: on glass the window's corners are square.
 #[tauri::command]
-fn set_glass(window: tauri::WebviewWindow, on: bool) {
+fn set_glass(window: tauri::WebviewWindow, on: bool, sharp: bool) {
     #[cfg(target_os = "macos")]
     let _ = window.with_webview(move |platform| {
         use objc2::runtime::AnyObject;
@@ -1196,6 +1196,10 @@ fn set_glass(window: tauri::WebviewWindow, on: bool) {
         }
         // SAFETY: the live WKWebView and AppKit's own classes, on the main thread
         unsafe {
+            let layer: *mut AnyObject = msg_send![view, layer];
+            if !layer.is_null() {
+                let _: () = msg_send![layer, setCornerRadius: if sharp { 0.0f64 } else { 12.0f64 }];
+            }
             let name: *mut AnyObject = msg_send![class!(NSString), stringWithUTF8String: c"re-glass".as_ptr()];
             let subviews: *mut AnyObject = msg_send![view, subviews];
             let count: usize = msg_send![subviews, count];

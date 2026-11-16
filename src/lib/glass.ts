@@ -12,7 +12,8 @@ let shared = false;
 function apply() {
 	const was = document.documentElement.classList.contains('glass');
 	document.documentElement.classList.toggle('glass', glass);
-	invoke('set_glass', { on: glass && !shared }).catch(() => {});
+	// on glass the corners are square, its own glass or the one under them all
+	invoke('set_glass', { on: glass && !shared, sharp: glass }).catch(() => {});
 	// what draws in the theme's ink (a canvas, a PDF page) draws again in the new one
 	if (was !== glass) dispatchEvent(new Event('themechange'));
 }
