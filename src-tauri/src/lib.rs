@@ -1000,6 +1000,8 @@ fn listen_for_desk_corners(app: &tauri::AppHandle) {
             let corners = number(c"corners") as u32;
             // pinned by ReDesk (⌃⌥P): the page writes P in its top left corner
             let pinned = number(c"pinned") == 1.0;
+            // joined (Flush) on glass: ReDesk lays one glass under them all, the window drops its own
+            let shared = number(c"shared") == 1.0;
             let Some(app) = DESK_APP.get() else { return };
             // which of the app's windows it is: the one with that frame; its interface's webview
             // (the window holds the tabs' webviews too) has the window's label
@@ -1013,6 +1015,7 @@ fn listen_for_desk_corners(app: &tauri::AppHandle) {
                     if let Some(webview) = app.get_webview(window.label()) {
                         set_corners(&webview, corners);
                         let _ = tauri::Emitter::emit_to(app, window.label(), "pinned", pinned);
+                        let _ = tauri::Emitter::emit_to(app, window.label(), "glass-shared", shared);
                     }
                 }
             }
