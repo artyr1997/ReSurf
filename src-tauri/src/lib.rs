@@ -1185,9 +1185,11 @@ fn desk_glass() -> bool {
 /// the desk's white words read on it) under the page, inside the web view, so its rounded corners round it
 /// too. The page itself goes clear (html.glass in app.css). `sharp`: on glass the window's corners are square.
 #[tauri::command]
-fn set_glass(window: tauri::WebviewWindow, on: bool, sharp: bool) {
+// (the webview that asks, not its window: ReSurf's window holds the tabs' webviews too, and a command
+// can't take such a window as a WebviewWindow)
+fn set_glass(webview: tauri::Webview, on: bool, sharp: bool) {
     #[cfg(target_os = "macos")]
-    let _ = window.with_webview(move |platform| {
+    let _ = webview.with_webview(move |platform| {
         use objc2::runtime::AnyObject;
         use objc2::{class, msg_send};
         let view = platform.inner() as *mut AnyObject;
