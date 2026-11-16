@@ -12,6 +12,8 @@
 				var theme = function () { return system.matches ? 'dark' : 'light'; };
 				root.dataset.theme = theme();
 				system.addEventListener('change', function () {
+					// on glass the look stays as it is (lib/glass.ts)
+					if (root.classList.contains('glass')) return;
 					var next = theme();
 					if (root.dataset.theme === next) return;
 					var apply = function () {

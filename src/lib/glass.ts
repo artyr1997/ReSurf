@@ -9,9 +9,26 @@ import { listen } from '@tauri-apps/api/event';
 let glass = false;
 let shared = false;
 
+/** the look the Mac (or the page's own pick) asks for, as index.html / app.html has it */
+function systemTheme() {
+	let picked: string | null = null;
+	try {
+		picked = localStorage.getItem('theme');
+	} catch {}
+	return picked || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+}
+
 function apply() {
-	const was = document.documentElement.classList.contains('glass');
-	document.documentElement.classList.toggle('glass', glass);
+	const root = document.documentElement;
+	const was = root.classList.contains('glass');
+	root.classList.toggle('glass', glass);
+	// on glass the look doesn't follow light and dark: always the night's (its inked words light on the
+	// glass); off glass, as the Mac is again
+	const theme = glass ? 'dark' : systemTheme();
+	if (root.dataset.theme !== theme) {
+		root.dataset.theme = theme;
+		if (was === glass) dispatchEvent(new Event('themechange'));
+	}
 	// on glass the corners are square, its own glass or the one under them all
 	invoke('set_glass', { on: glass && !shared, sharp: glass }).catch(() => {});
 	// what draws in the theme's ink (a canvas, a PDF page) draws again in the new one
