@@ -359,3 +359,10 @@ html[data-flap='1'] :is(button, a, .side, .corner) {
 html[data-flap='0'] :is(button, a, .side, .corner) {
 	text-shadow: 0 0 0.5px rgba(0, 0, 0, 0);
 }
+
+/* on glass the popups and the toasts are glass too: a darker frosted pane over what they cover */
+html.glass :is(.box, .toast, .info-box, .exp-box, .confirm-box, .saved-toast) {
+	background: rgba(0, 0, 0, 0.32) !important;
+	-webkit-backdrop-filter: blur(24px);
+	backdrop-filter: blur(24px);
+}
