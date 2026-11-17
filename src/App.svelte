@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { t } from './lib/lang.svelte';
+	import { t, tx } from './lib/lang.svelte';
 	// The browser. Favourites run down the left edge, the other open tabs down the
 	// right one. The page sits in the card in the middle: it is a native webview
 	// that Rust lays over the card (show_tab), so whenever the UI needs that space
@@ -469,7 +469,7 @@
 		<div class="menu">
 			{#each actions as action, i}
 				<button class="menu-item" onclick={() => action.run()} onmouseenter={() => (selectedAction = i)}>
-					<span class:ink-mark={i === selectedAction}>{action.label}</span>
+					<span class:ink-mark={i === selectedAction}>{tx(action.label)}</span>
 				</button>
 			{/each}
 		</div>
@@ -479,16 +479,16 @@
 		<p class="pop-heading">RE:SURF</p>
 		<div class="pop-divider"></div>
 		<p class="pop-text">
-			{tabs.length} {tabs.length === 1 ? 'tab' : 'tabs'} · {favorites.length} {favorites.length === 1 ? 'favourite' : 'favourites'}
+			{tx(tabs.length === 1 ? '{n} tab' : '{n} tabs', { n: tabs.length })} · {tx(favorites.length === 1 ? '{n} favourite' : '{n} favourites', { n: favorites.length })}
 		</p>
 		<div class="pop-divider"></div>
 		<div class="shortcuts">
 			{#each shortcuts as [key, desc]}
-				<span class="key">{key}</span><span class="desc">{desc}</span>
+				<span class="key">{tx(key)}</span><span class="desc">{tx(desc)}</span>
 			{/each}
 		</div>
 		<div class="pop-divider"></div>
-		<p class="pop-footer">WebKit · Google Search · no history kept</p>
+		<p class="pop-footer">{tx('WebKit · Google Search · no history kept')}</p>
 	</Popup>
 {/if}
 

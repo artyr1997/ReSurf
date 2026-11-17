@@ -39,6 +39,36 @@ const japanese: Record<string, string> = {
 	'NEXT SPACE': '次の場所',
 };
 
+// the popups' words: headings, texts, their buttons, the keys they list
+const japaneseText: Record<string, string> = {
+	'Open': '開く',
+	'Copy link': 'リンクをコピー',
+	'Remove from favourites': 'お気に入りから外す',
+	'Add to favourites': 'お気に入りに追加',
+	'Close': '閉じる',
+	'Remove': '削除',
+	'{n} tab': 'タブ {n}',
+	'{n} tabs': 'タブ {n}',
+	'{n} favourite': 'お気に入り {n}',
+	'{n} favourites': 'お気に入り {n}',
+	'New window (its own tabs)': '新しいウィンドウ（タブは別）',
+	'New tab': '新しいタブ',
+	'Edit address': 'アドレスを編集',
+	'Close tab': 'タブを閉じる',
+	'Favourite': 'お気に入り',
+	'Back / forward': '戻る / 進む',
+	'Reload': '再読み込み',
+	'Video fills the page': '動画をページいっぱいに',
+	'Previous / next tab': '前 / 次のタブ',
+	'Favourites / other tabs': 'お気に入り / ほかのタブ',
+	'Page fills the window': 'ページをウィンドウいっぱいに',
+	'E-ink': '電子ペーパー',
+	'Info': '情報',
+	'Right click': '右クリック',
+	'Tab actions': 'タブの操作',
+	'WebKit · Google Search · no history kept': 'WebKit · Google検索 · 履歴は残しません',
+};
+
 export const language = $state({ japanese: false });
 
 // The language turning, as on a departures board: each letter runs through others (Latin and katakana)
@@ -61,6 +91,13 @@ export function t(word: string, as?: string): string {
 			return POOL[Math.abs(hash) % POOL.length];
 		})
 		.join('');
+}
+
+/** the popups' words (any length) in the desk's language; {name} in them is filled from `values` */
+export function tx(text: string, values?: Record<string, string | number>): string {
+	let out = language.japanese ? (japaneseText[text] ?? text) : text;
+	if (values) for (const [key, value] of Object.entries(values)) out = out.replaceAll(`{${key}}`, String(value));
+	return out;
 }
 
 let flapTimer: ReturnType<typeof setInterval> | null = null;
