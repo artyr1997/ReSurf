@@ -74,7 +74,17 @@ function turn() {
 			clearInterval(flapTimer!);
 			flapTimer = null;
 		} else flap.frame++;
+		repaint();
 	}, STEP);
+}
+
+// WebKit leaves upright vertical words in a see-through window as they were painted, though their text has
+// changed: each frame (and the last, after the words have settled) the buttons are told to paint again
+// (app.css: html[data-flap] changes nothing to look at)
+function repaint() {
+	const root = document.documentElement;
+	root.dataset.flap = root.dataset.flap === '1' ? '0' : '1';
+	if (flap.frame < 0) requestAnimationFrame(() => requestAnimationFrame(() => delete root.dataset.flap));
 }
 
 function set(code: string, animate = false) {

@@ -351,3 +351,11 @@ html.glass :is(.ink-mark-v, .side.ink-mark-v, button.play .ink-mark, button.paus
 html.glass :is(.side.boxed, .nav-btn, .nav-button, .v-btn, .v-btn-left, .nav-edit, .nav-info, .edit, .info, .start-button, .kofi-button):not(.ink-mark-v) {
 	border-color: transparent !important;
 }
+
+/* the language turning: the buttons paint again each frame (lang.svelte.ts repaint) */
+html[data-flap='1'] :is(button, a, .side, .corner) {
+	text-shadow: 0 0 0 transparent;
+}
+html[data-flap='0'] :is(button, a, .side, .corner) {
+	text-shadow: 0 0 0.5px rgba(0, 0, 0, 0);
+}
