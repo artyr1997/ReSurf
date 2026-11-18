@@ -764,6 +764,28 @@ fn fade_in(window: &tauri::Window) {
     }
     let _ = window.show();
     let _ = window.set_focus();
+    // ReDesk draws the opening (its Opening.swift: the corners' +, then the glass, then the window growing
+    // to its height) and says "show-window" when the interface is to come: it fades in then
+    // (fade_windows_in_and_out). Should ReDesk not be there, or not answer, at once.
+    // SAFETY: the live NSWindow, on the main thread
+    if unsafe { tell_desk(ns_window, "open") } {
+        let target = window.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(2000));
+            let window = target.clone();
+            let _ = target.run_on_main_thread(move || {
+                let Ok(ns_window) = window.ns_window() else { return };
+                // SAFETY: the live NSWindow, on the main thread
+                unsafe {
+                    let alpha: f64 = msg_send![ns_window as *mut AnyObject, alphaValue];
+                    if alpha < 0.01 {
+                        fade_windows(&[ns_window as *mut AnyObject], 1.0, None);
+                    }
+                }
+            });
+        });
+        return;
+    }
     unsafe {
         let _: () = msg_send![class!(NSAnimationContext), beginGrouping];
         let context: *mut AnyObject = msg_send![class!(NSAnimationContext), currentContext];
@@ -775,6 +797,27 @@ fn fade_in(window: &tauri::Window) {
         let _: () = msg_send![animator, setAlphaValue: 1.0f64];
         let _: () = msg_send![class!(NSAnimationContext), endGrouping];
     }
+}
+
+/// Tells ReDesk a window opens or closes ("open" / "close"), so it draws that (Opening.swift); whether
+/// ReDesk is there to.
+#[cfg(target_os = "macos")]
+unsafe fn tell_desk(ns_window: *mut objc2::runtime::AnyObject, kind: &str) -> bool {
+    use objc2::runtime::AnyObject;
+    use objc2::{class, msg_send};
+    let desk: *mut AnyObject = msg_send![class!(NSString), stringWithUTF8String: c"com.artursavytskyi.redesk".as_ptr()];
+    let running: *mut AnyObject = msg_send![class!(NSRunningApplication), runningApplicationsWithBundleIdentifier: desk];
+    let count: usize = msg_send![running, count];
+    if count == 0 {
+        return false;
+    }
+    let number: isize = msg_send![ns_window, windowNumber];
+    let Ok(text) = std::ffi::CString::new(format!("{kind} {} {number}", std::process::id())) else { return false };
+    let object: *mut AnyObject = msg_send![class!(NSString), stringWithUTF8String: text.as_ptr()];
+    let name: *mut AnyObject = msg_send![class!(NSString), stringWithUTF8String: c"com.artursavytskyi.re.opening".as_ptr()];
+    let center: *mut AnyObject = msg_send![class!(NSDistributedNotificationCenter), defaultCenter];
+    let _: () = msg_send![center, postNotificationName: name, object: object, userInfo: std::ptr::null::<AnyObject>(), deliverImmediately: true];
+    true
 }
 
 /// Fades the window in on the main thread; `after` waits first (the fallback, should the interface never say it is ready).
@@ -1085,8 +1128,12 @@ fn fade_on_close(window: &tauri::Window, event: &tauri::WindowEvent) {
         let done = block2::RcBlock::new(move || {
             let _ = target.destroy();
         });
-        // SAFETY: the live NSWindow of `window`, on the main thread (window events are)
-        unsafe { fade_windows(&[ns_window as *mut objc2::runtime::AnyObject], 0.0, Some(&done)) };
+        // SAFETY: the live NSWindow of `window`, on the main thread (window events are). ReDesk draws the
+        // closing under it (the glass going back to a quarter of its height, then the corners' + going)
+        unsafe {
+            tell_desk(ns_window as *mut objc2::runtime::AnyObject, "close");
+            fade_windows(&[ns_window as *mut objc2::runtime::AnyObject], 0.0, Some(&done))
+        };
     }
 }
 
