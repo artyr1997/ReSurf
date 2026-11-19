@@ -60,7 +60,7 @@
 		return () => observer.disconnect();
 	});
 
-	// a tab picked with ⌥ + arrows leaves the keys with the UI, so the next ⌥ + arrow works too;
+	// a tab picked with ⇧ + arrows leaves the keys with the UI, so the next ⇧ + arrow works too;
 	// anything else hands them to the page
 	let pageTakesKeys = true;
 
@@ -298,8 +298,11 @@
 
 	// keys that reach the UI (a page keeps its own; ⌘ shortcuts come from the menu)
 	function handleKeydown(e: KeyboardEvent) {
-		// ⌥ + arrows walk the tabs, only while the UI has the keys: on a page they stay the page's
-		if (e.altKey && popup === 'none' && e.key.startsWith('Arrow')) {
+		// ⇧ + arrows walk the tabs, only while the UI has the keys: on a page they stay the page's (and
+		// in a field ⇧← / ⇧→ still select its words)
+		const sideways = e.key === 'ArrowLeft' || e.key === 'ArrowRight';
+		if (e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey && popup === 'none' && e.key.startsWith('Arrow')
+			&& !(sideways && e.target instanceof HTMLInputElement)) {
 			e.preventDefault();
 			if (e.key === 'ArrowDown') cycle(1, false);
 			else if (e.key === 'ArrowUp') cycle(-1, false);
@@ -329,7 +332,7 @@
 				e.preventDefault();
 				cancelSearch();
 			} else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !query) {
-				// an empty Search walks the tabs, as ⌥↑ / ⌥↓ do
+				// an empty Search walks the tabs, as ⇧↑ / ⇧↓ do
 				e.preventDefault();
 				cycle(e.key === 'ArrowDown' ? 1 : -1, false);
 			}
@@ -375,8 +378,8 @@
 		['⌘ [ / ⌘ ]', 'Back / forward'],
 		['⌘ R', 'Reload'],
 		['⌘ F', 'Video fills the page'],
-		['⌥ ↑ / ⌥ ↓', 'Previous / next tab'],
-		['⌥ ← / ⌥ →', 'Favourites / other tabs'],
+		['⇧ ↑ / ⇧ ↓', 'Previous / next tab'],
+		['⇧ ← / ⇧ →', 'Favourites / other tabs'],
 		['⌘ ⇧ F', 'Page fills the window'],
 		['⌘ E', 'E-ink'],
 		['⌘ I', 'Info'],
@@ -428,7 +431,7 @@
 </nav>
 <button class="side switch nav-full" class:ink-mark-v={full} onclick={toggleFull} title="Page fills the window (⌘⇧F)">{t('FULL')}</button>
 
-<!-- a small window: no columns, tabs are walked with ⌥ ↑ / ⌥ ↓ -->
+<!-- a small window: no columns, tabs are walked with ⇧ ↑ / ⇧ ↓ -->
 <button class="corner top-right" onclick={newTab} title="New tab (⌘T)">NOVA</button>
 <button class="corner bottom-left" onclick={() => (popup = 'info')} title="Info (⌘I)">INFO</button>
 <button class="corner bottom-right" class:on={full} onclick={toggleFull} title="Page fills the window (⌘⇧F)">FULL</button>
