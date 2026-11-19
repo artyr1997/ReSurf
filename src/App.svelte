@@ -398,12 +398,9 @@
 		onclick={() => activate(tab.id)}
 		oncontextmenu={() => openActions(tab)}
 		title={tab.title || host(tab.url)}
+		aria-label={tab.title || host(tab.url)}
 	>
-		{#if tab.icon && !brokenIcon[tab.id]}
-			<img src={tab.icon} alt="" draggable="false" onerror={() => (brokenIcon[tab.id] = true)} />
-		{:else}
-			<span class="letter">{letter(tab.url)}</span>
-		{/if}
+		<span class="dash"></span>
 	</button>
 {/snippet}
 
@@ -505,7 +502,8 @@
 	:global(html.full) .column,
 	:global(html.full) .corner { visibility: hidden; }
 
-	/* ── tab icons, centred in each column; a long column scrolls ── */
+	/* ── the tabs as ReDesk's wallpapers: a column of dashes, the open one long and strong, the others short
+	   and faint; a click opens one, its name on hovering. Centred in each column; a long column scrolls ── */
 	.column {
 		position: fixed;
 		top: calc(6.25% + 160px);
@@ -526,57 +524,41 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 22px;
 		padding: 12px 0;
 	}
 
+	/* one dash, 16 px apart (as the desk's), the whole row to click */
 	.tab {
-		width: 42px;
-		height: 42px;
+		width: 58px;
+		height: 16px;
 		flex-shrink: 0;
 		display: grid;
 		place-items: center;
 		background: transparent;
-		border: 2px solid transparent;
+		border: none;
 		padding: 0;
-		opacity: 0.6;
 		cursor: pointer;
-		transition: opacity 200ms ease, border-color 200ms ease;
 	}
 
-	.tab:hover { opacity: 1; }
-
-	/* the open tab is ringed; a letter drops its own ring so there is only one */
-	.tab.active {
-		opacity: 1;
-		border-color: var(--line);
-		border-radius: 50%;
+	.dash {
+		width: 10px;
+		height: 2px;
+		border-radius: 1px;
+		background: var(--text);
+		opacity: 0.35;
+		transition: width 200ms ease, opacity 200ms ease;
 	}
 
-	.tab.active .letter { border-color: transparent; }
+	.tab:hover .dash { width: 14px; opacity: 0.7; }
 
-	.tab.loading { animation: breathe 1.2s ease-in-out infinite; }
+	.tab.active .dash { width: 20px; opacity: 1; }
 
-	.tab img {
-		width: 24px;
-		height: 24px;
-		object-fit: contain;
-		filter: grayscale(1) contrast(1.1);
-		user-select: none;
-	}
+	.tab.loading .dash { animation: breathe 1.2s ease-in-out infinite; }
 
-	/* a site without an icon (or not opened yet): its first letter in a ring */
-	.letter {
-		width: 26px;
-		height: 26px;
-		display: grid;
-		place-items: center;
-		border: 1.5px solid var(--line);
-		border-radius: 50%;
-		font-family: 'Kurale', serif;
-		font-size: 15px;
-		line-height: 1;
-	}
+	/* on glass the desk's own ink: white at 25%, the open one at 50% (as its wallpapers' dashes) */
+	:global(html.glass) .dash { background: #fff; opacity: 0.25; }
+	:global(html.glass) .tab:hover .dash { opacity: 0.4; }
+	:global(html.glass) .tab.active .dash { opacity: 0.5; }
 
 	/* ── the page ── */
 	.card {
