@@ -135,19 +135,18 @@ fn tabs_in<R: Runtime>(app: &AppHandle<R>, ui: &str) -> Vec<Webview<R>> {
     tabs(app).filter(|w| w.window().label() == ui).collect()
 }
 
-/// The pages' corners: the card's (22), or the window's (12) while a page fills the window (FULL).
-/// The windows in FULL (by label): their pages as round as the window.
+/// The windows in FULL (by label): their pages told (search results put their buttons where ReSurf's are).
 static FULL: Mutex<Option<HashSet<String>>> = Mutex::new(None);
 
 fn is_full(ui: &str) -> bool {
     FULL.lock().is_ok_and(|f| f.as_ref().is_some_and(|f| f.contains(ui)))
 }
 
-/// Rounded corners like the cards in the other Re apps, and no background of its own.
+/// Square corners, as the glass windows', and no background of its own.
 #[cfg(target_os = "macos")]
 fn round_corners<R: Runtime>(webview: &Webview<R>) {
-    // on glass square, as the windows are; FULL square too (the page as the screen it fills)
-    let radius = if TAB_GLASS.load(Ordering::Relaxed) || is_full(webview.window().label()) { 0.0 } else { 22.0 };
+    // square, as the glass windows are
+    let radius = 0.0;
     use objc2::msg_send;
     use objc2::runtime::AnyObject;
 
@@ -414,9 +413,7 @@ fn focus_page(uri: &str) -> Vec<u8> {
     .into_bytes()
 }
 
-/// Glass (ReDesk's Settings › Glass windows): the tabs' pages are told too, so Google's results ReSurf draws
-/// (search.js) are written on the glass, as ReSurf's own page is.
-static TAB_GLASS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+/// The tabs' pages on glass, as ReSurf's own page is (search.js writes Google's results on it).
 
 fn glass_script(on: bool) -> String {
     format!("document.documentElement.classList.toggle('resurf-glass', {on})")
@@ -462,9 +459,7 @@ fn create_tab<R: Runtime>(app: &AppHandle<R>, window: &tauri::Window<R>, id: u64
         .initialization_script(search_script())
         .on_page_load(move |webview, payload| {
             let loading = payload.event() == PageLoadEvent::Started;
-            if TAB_GLASS.load(Ordering::Relaxed) {
-                let _ = webview.eval(glass_script(true));
-            }
+            let _ = webview.eval(glass_script(true));
             if TAB_JA.load(Ordering::Relaxed) {
                 let _ = webview.eval(language_script(true));
             }
@@ -1246,16 +1241,6 @@ fn listen_for_desk_language(app: &tauri::AppHandle) {
 
 // ── glass: ReDesk's Settings › Glass windows (an experiment) ──
 
-/// Whether ReDesk keeps the windows as glass, read from its settings.
-#[tauri::command]
-fn desk_glass() -> bool {
-    std::process::Command::new("/usr/bin/defaults")
-        .args(["read", "com.artursavytskyi.redesk", "glass"])
-        .output()
-        .map(|out| String::from_utf8_lossy(&out.stdout).trim() == "1")
-        .unwrap_or(false)
-}
-
 /// The window as glass, or paper again: the system's blur of what is behind it (the dark HUD material, as
 /// the desk's white words read on it) under the page, inside the web view, so its rounded corners round it
 /// too. The page itself goes clear (html.glass in app.css). `sharp`: on glass the window's corners are square.
@@ -1322,49 +1307,6 @@ fn set_glass(webview: tauri::Webview, on: bool, sharp: bool) {
     });
 }
 
-#[cfg(target_os = "macos")]
-static GLASS_APP: std::sync::OnceLock<tauri::AppHandle> = std::sync::OnceLock::new();
-
-/// ReDesk says when the windows turn to glass or back (a distributed notification, "1" or "0" as its
-/// object): every window gets a `glass` event.
-#[cfg(target_os = "macos")]
-fn listen_for_desk_glass(app: &tauri::AppHandle) {
-    use block2::RcBlock;
-    use objc2::runtime::AnyObject;
-    use objc2::{class, msg_send};
-
-    let _ = GLASS_APP.set(app.clone());
-    let handler = RcBlock::new(|note: *mut AnyObject| {
-        // SAFETY: on the main queue; the object ReDesk sends is a string
-        unsafe {
-            let object: *mut AnyObject = msg_send![note, object];
-            let on = if object.is_null() {
-                false
-            } else {
-                let utf8: *const std::ffi::c_char = msg_send![object, UTF8String];
-                !utf8.is_null() && std::ffi::CStr::from_ptr(utf8).to_bytes() == b"1"
-            };
-            if let Some(app) = GLASS_APP.get() {
-                let _ = tauri::Emitter::emit(app, "glass", on);
-                TAB_GLASS.store(on, Ordering::Relaxed);
-                for webview in tabs(app) {
-                    let _ = webview.eval(glass_script(on));
-                    round_corners(&webview);
-                }
-            }
-        }
-    });
-    // SAFETY: AppKit's own objects, on the main thread (setup); the center keeps the block
-    unsafe {
-        let center: *mut AnyObject = msg_send![class!(NSDistributedNotificationCenter), defaultCenter];
-        let name: *mut AnyObject =
-            msg_send![class!(NSString), stringWithUTF8String: c"com.artursavytskyi.re.glass".as_ptr()];
-        let queue: *mut AnyObject = msg_send![class!(NSOperationQueue), mainQueue];
-        let _: *mut AnyObject = msg_send![center, addObserverForName: name, object: std::ptr::null::<AnyObject>(),
-                                          queue: queue, usingBlock: &*handler];
-    }
-}
-
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -1389,8 +1331,6 @@ pub fn run() {
             listen_for_desk_corners(app.handle());
             listen_for_desk_language(app.handle());
             #[cfg(target_os = "macos")]
-            listen_for_desk_glass(app.handle());
-            TAB_GLASS.store(desk_glass(), Ordering::Relaxed);
             TAB_JA.store(desk_language() == "ja", Ordering::Relaxed);
             // ~/Library/Application Support/<identifier>/ on macOS
             let dir = app.path().app_data_dir()?;
@@ -1428,7 +1368,6 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             desk_language,
-            desk_glass,
             set_glass,
             window_ready,
             new_window,

@@ -1,54 +1,24 @@
-// Glass (an experiment, ReDesk's Settings › Glass windows): the window is the system's blur of what is
-// behind it (src-tauri's set_glass) and the page goes clear, written in the desk's white ink (html.glass in
-// app.css). ReDesk keeps it (read at start, `desk_glass`) and says when it changes (a `glass` event).
-// Joined to others (Flush), ReDesk lays one glass under them all (`glass-shared`): the window drops its own,
-// so they are one glass, no seams where they meet.
+// Glass: the Re apps' one look. The window is the system's blur of what is behind it (src-tauri's set_glass)
+// and the page is clear on it, written in the desk's white ink (html.glass in app.css; the page has the class
+// from its first frame, index.html). Joined to others (Flush), ReDesk lays one glass under them all
+// (`glass-shared`): the window drops its own, so they are one glass, no seams where they meet.
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
-let glass = false;
 let shared = false;
 
-/** the look the Mac (or the page's own pick) asks for, as index.html / app.html has it */
-function systemTheme() {
-	let picked: string | null = null;
-	try {
-		picked = localStorage.getItem('theme');
-	} catch {}
-	return picked || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-}
+/** the window's own glass, or none while ReDesk's is under it; the corners square either way */
+const apply = () => invoke('set_glass', { on: !shared, sharp: true }).catch(() => {});
 
-function apply() {
-	const root = document.documentElement;
-	const was = root.classList.contains('glass');
-	root.classList.toggle('glass', glass);
-	// on glass the look doesn't follow light and dark: always the night's (its inked words light on the
-	// glass); off glass, as the Mac is again
-	const theme = glass ? 'dark' : systemTheme();
-	if (root.dataset.theme !== theme) {
-		root.dataset.theme = theme;
-		if (was === glass) dispatchEvent(new Event('themechange'));
-	}
-	// on glass the corners are square, its own glass or the one under them all
-	invoke('set_glass', { on: glass && !shared, sharp: glass }).catch(() => {});
-	// what draws in the theme's ink (a canvas, a PDF page) draws again in the new one
-	if (was !== glass) dispatchEvent(new Event('themechange'));
-}
-
-/** once, at start: as ReDesk keeps it, and again when it changes */
+/** once, at start */
 export function followDeskGlass() {
+	const root = document.documentElement;
+	root.classList.add('glass');
+	// its inked words light, as on the night's paper (the rules for it are under [data-theme='dark'])
+	root.dataset.theme = 'dark';
 	if (!('__TAURI_INTERNALS__' in window)) return;
-	invoke<boolean>('desk_glass')
-		.then(on => {
-			glass = on;
-			apply();
-		})
-		.catch(() => {});
-	listen<boolean>('glass', e => {
-		glass = e.payload;
-		apply();
-	});
-	listen<boolean>('glass-shared', e => {
+	apply();
+	listen<boolean>('glass-shared', (e) => {
 		if (e.payload === shared) return;
 		shared = e.payload;
 		apply();
