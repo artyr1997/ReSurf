@@ -146,8 +146,8 @@ fn is_full(ui: &str) -> bool {
 /// Rounded corners like the cards in the other Re apps, and no background of its own.
 #[cfg(target_os = "macos")]
 fn round_corners<R: Runtime>(webview: &Webview<R>) {
-    // on glass square, as the windows are
-    let radius = if TAB_GLASS.load(Ordering::Relaxed) { 0.0 } else if is_full(webview.window().label()) { 12.0 } else { 22.0 };
+    // on glass square, as the windows are; FULL square too (the page as the screen it fills)
+    let radius = if TAB_GLASS.load(Ordering::Relaxed) || is_full(webview.window().label()) { 0.0 } else { 22.0 };
     use objc2::msg_send;
     use objc2::runtime::AnyObject;
 

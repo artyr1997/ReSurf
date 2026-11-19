@@ -573,7 +573,7 @@
 	}
 
 	/* FULL: the page over nearly the whole window, a frame of paper around it */
-	.card.full { top: 6px; bottom: 6px; left: 6px; right: 6px; border-radius: 12px; }
+	.card.full { top: 6px; bottom: 6px; left: 6px; right: 6px; border-radius: 0; }
 
 	/* in e-ink the page sits on the paper itself */
 	.card.eink { background: var(--bg); }
