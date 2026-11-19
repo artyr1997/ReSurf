@@ -405,7 +405,7 @@
 {/snippet}
 
 <!-- left: new tab, favourites, info -->
-<button class="side plain nav-new" onclick={newTab} title="New tab (⌘T)">{t('NEW', 'NEW TAB')}</button>
+<button class="side plain nav-new" onclick={newTab} title="New tab (⌘T)">{t('NOVA', 'NEW TAB')}</button>
 <nav class="column left scroll" use:scrollFade>
 	<div class="icons">
 		{#each favorites as tab (tab.id)}{@render icon(tab)}{/each}
@@ -429,7 +429,7 @@
 <button class="side switch nav-full" class:ink-mark-v={full} onclick={toggleFull} title="Page fills the window (⌘⇧F)">{t('FULL')}</button>
 
 <!-- a small window: no columns, tabs are walked with ⌥ ↑ / ⌥ ↓ -->
-<button class="corner top-right" onclick={newTab} title="New tab (⌘T)">NEW</button>
+<button class="corner top-right" onclick={newTab} title="New tab (⌘T)">NOVA</button>
 <button class="corner bottom-left" onclick={() => (popup = 'info')} title="Info (⌘I)">INFO</button>
 <button class="corner bottom-right" class:on={full} onclick={toggleFull} title="Page fills the window (⌘⇧F)">FULL</button>
 

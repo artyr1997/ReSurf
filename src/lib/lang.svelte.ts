@@ -18,7 +18,7 @@ const japanese: Record<string, string> = {
 	READ: '中を見る',
 	ADD: '追加する',
 	EDIT: '編集する',
-	NEW: '新規作成',
+	NOVA: '新規作成',
 	CLOSE: '閲覧終了',
 	BACK: '前に戻る',
 	FULL: '全画面化',
