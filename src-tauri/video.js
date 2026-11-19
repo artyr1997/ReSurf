@@ -13,12 +13,15 @@
 			position: fixed !important; inset: 0 !important; width: 100vw !important; height: 100vh !important;
 			max-width: none !important; max-height: none !important; margin: 0 !important;
 			z-index: 2147483647 !important; background: #000 !important; transform: none !important;
+			border-radius: 0 !important;
 		}
 		/* inside the player, the video and what holds it fill it too (players size them for the old box) */
 		[${INNER}] {
 			position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important;
 			max-width: none !important; max-height: none !important; min-height: 0 !important;
 			margin: 0 !important; padding: 0 !important; transform: none !important;
+			/* square, as the page it fills (YouTube rounds its player) */
+			border-radius: 0 !important;
 		}
 		video[${MARK}], video[${INNER}] { object-fit: contain !important; }
 		/* nearly the page's shape: a few pixels cut off rather than black bars along the edges */
