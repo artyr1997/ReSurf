@@ -442,9 +442,9 @@
 			{results ? searchQuery(current.url) : host(current.url)}
 		</button>
 		<div class="pager" class:gone={results}>
-			<button class="turn" onclick={() => api.back(current!.id)} aria-label="Back" title="Back (⌘[)">←</button>
+			<button class="turn" onclick={() => api.back(current!.id)} aria-label="Back" title="Back (⌘[)">&lt;</button>
 			<button class="path" onclick={editAddress} title={current.url}>{current.title || path(current.url)}</button>
-			<button class="turn" onclick={() => api.forward(current!.id)} aria-label="Forward" title="Forward (⌘])">→</button>
+			<button class="turn" onclick={() => api.forward(current!.id)} aria-label="Forward" title="Forward (⌘])">&gt;</button>
 		</div>
 	{:else if ready}
 		<input
