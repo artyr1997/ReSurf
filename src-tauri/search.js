@@ -118,22 +118,10 @@
 		#resurf-kinds a.re-vid { right: 44px; top: 40px; }
 		#resurf-kinds a.re-fcs { right: 44px; bottom: 40px; }
 		#resurf-search .re-none { margin: 40px 0; text-align: center; font-size: 18px; opacity: 0.6; }
-		/* PREV / NEXT: boxes halfway down the sides, as the Re apps' (.side.boxed) */
-		#resurf-kinds a.re-box {
-			top: 50%; transform: translateY(-50%); min-height: 164px; padding: 18px 0 calc(18px - 0.6em);
-			justify-content: center; border: 2px solid var(--line); opacity: 1;
-			transition: background 200ms ease, color 200ms ease;
-		}
-		#resurf-kinds a.re-box:hover { background: var(--text); border-color: var(--text); color: var(--bg); }
-		#resurf-kinds a.re-box:not([href]) { opacity: 0.3; pointer-events: none; }
-		#resurf-kinds a.re-prev { left: 44px; }
-		#resurf-kinds a.re-next { right: 44px; }
 		/* FULL (html.resurf-full): the page is the whole window less 6px, the buttons where ReSurf's own side
 		   buttons are (6.25% from the window's edges, App.svelte .side), the list under what was searched */
-		html.resurf-full #resurf-kinds a.re-all, html.resurf-full #resurf-kinds a.re-img,
-		html.resurf-full #resurf-kinds a.re-prev { left: calc(6.25vw - 33px); }
-		html.resurf-full #resurf-kinds a.re-vid, html.resurf-full #resurf-kinds a.re-fcs,
-		html.resurf-full #resurf-kinds a.re-next { right: calc(6.25vw - 33px); }
+		html.resurf-full #resurf-kinds a.re-all, html.resurf-full #resurf-kinds a.re-img { left: calc(6.25vw - 33px); }
+		html.resurf-full #resurf-kinds a.re-vid, html.resurf-full #resurf-kinds a.re-fcs { right: calc(6.25vw - 33px); }
 		html.resurf-full #resurf-kinds a.re-all, html.resurf-full #resurf-kinds a.re-vid { top: calc(6.25vh + 3px); }
 		html.resurf-full #resurf-kinds a.re-img, html.resurf-full #resurf-kinds a.re-fcs { bottom: calc(6.25vh - 5px); }
 		html.resurf-full #resurf-search { top: calc(3.125vh + 30px); left: calc(6.25vw + 40px); right: calc(6.25vw + 40px); }
@@ -297,6 +285,14 @@
 		return isGoogle ? `${location.origin}/search?udm=${udm}&q=${q}` : `https://www.google.com/search?udm=${udm}&q=${q}`;
 	}
 
+	/** a kind's button, in the desk's language (html.resurf-ja: lib.rs language_script) */
+	const JAPANESE = { all: '全て検索', img: '画像検索', vid: '動画検索', fcs: '集中検索' };
+	const label = (k) => (document.documentElement.classList.contains('resurf-ja') ? JAPANESE[k] : k.toUpperCase());
+	// the language changed: the buttons written again
+	new MutationObserver(() => {
+		for (const a of document.querySelectorAll('#resurf-kinds a[data-kind]')) a.textContent = label(a.dataset.kind);
+	}).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
 	function kinds() {
 		const box = document.createElement('div');
 		box.id = 'resurf-kinds';
@@ -304,7 +300,8 @@
 			const a = document.createElement('a');
 			a.className = 're-' + k + (k === kind ? ' re-on' : '');
 			a.href = as(k);
-			a.textContent = k.toUpperCase();
+			a.dataset.kind = k;
+			a.textContent = label(k);
 			a.title = { all: 'All', img: 'Images', vid: 'Videos', fcs: 'Focus: the small, text web (Marginalia Search)' }[k];
 			box.append(a);
 		}
@@ -395,7 +392,7 @@
 		finishRender(main, items, prevAt, nextAt);
 	}
 
-	/** The buttons at the sides: the kinds, and PREV / NEXT. Pages: Google's counted by start= (ten results
+	/** The buttons at the sides: the kinds; and where the pages before and after are (← / →). Pages: Google's counted by start= (ten results
 	 * at a time, or as many pictures as came), Marginalia's by page= (from 1, and it says how many there are). */
 	function sides(found) {
 		const side = kinds();
@@ -418,17 +415,7 @@
 			if (start > 0) prevAt = at('start', Math.max(0, start - step), 0);
 			nextAt = at('start', start + step, 0);
 		}
-		const prev = document.createElement('a');
-		prev.className = 're-box re-prev';
-		prev.textContent = 'PREV';
-		prev.title = 'Previous page';
-		if (prevAt) prev.href = prevAt;
-		const next = document.createElement('a');
-		next.className = 're-box re-next';
-		next.textContent = 'NEXT';
-		next.title = 'Next page';
-		if (nextAt) next.href = nextAt;
-		side.append(prev, next);
+		// the pages turn with ← / → (no buttons)
 		return { side, prevAt, nextAt };
 	}
 

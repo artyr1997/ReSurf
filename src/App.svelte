@@ -43,7 +43,7 @@
 	let popup = $state<PopupKind>('none');
 	let showing = $derived(mode === 'page' && popup === 'none' && !!current);
 	// search results lie on the paper itself: no card, what was searched above in place of the site,
-	// nothing below: the pages turn with PREV / NEXT at the sides (see search.js)
+	// nothing below: the pages turn with ← / → (see search.js)
 	let results = $derived(mode === 'page' && !!current && isSearch(current.url));
 
 	function measure() {
@@ -238,7 +238,7 @@
 	}
 
 	// the pages' corners follow (lib.rs set_full): the window's in FULL, the card's otherwise
-	// search results too: their own buttons (ALL, IMG, VID, PREV, NEXT …) take the sides' place
+	// search results too: their own buttons (ALL, IMG, VID, FCS) take the sides' place
 	let fullShown = $derived(full && mode === 'page');
 	$effect(() => {
 		api.setFull(fullShown);

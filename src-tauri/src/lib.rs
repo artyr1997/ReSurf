@@ -422,6 +422,14 @@ fn glass_script(on: bool) -> String {
     format!("document.documentElement.classList.toggle('resurf-glass', {on})")
 }
 
+/// The desk's language (ReDesk's Settings › Language): the tabs' pages are told too, so the buttons on
+/// Google's results ReSurf draws (search.js: ALL, IMG, VID, FCS) are in it.
+static TAB_JA: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+fn language_script(japanese: bool) -> String {
+    format!("document.documentElement.classList.toggle('resurf-ja', {japanese})")
+}
+
 /// search.js with the ink brushstroke's pieces (public/ink), across and down, put in.
 fn search_script() -> &'static str {
     static SCRIPT: std::sync::OnceLock<String> = std::sync::OnceLock::new();
@@ -456,6 +464,9 @@ fn create_tab<R: Runtime>(app: &AppHandle<R>, window: &tauri::Window<R>, id: u64
             let loading = payload.event() == PageLoadEvent::Started;
             if TAB_GLASS.load(Ordering::Relaxed) {
                 let _ = webview.eval(glass_script(true));
+            }
+            if TAB_JA.load(Ordering::Relaxed) {
+                let _ = webview.eval(language_script(true));
             }
             let eink = load_app.state::<AppState>().eink.load(Ordering::Relaxed);
             if eink {
@@ -1212,7 +1223,12 @@ fn listen_for_desk_language(app: &tauri::AppHandle) {
                 if utf8.is_null() { "en".into() } else { std::ffi::CStr::from_ptr(utf8).to_string_lossy().into_owned() }
             };
             if let Some(app) = LANGUAGE_APP.get() {
+                let japanese = language == "ja";
                 let _ = tauri::Emitter::emit(app, "language", language);
+                TAB_JA.store(japanese, Ordering::Relaxed);
+                for webview in tabs(app) {
+                    let _ = webview.eval(language_script(japanese));
+                }
             }
         }
     });
@@ -1375,6 +1391,7 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             listen_for_desk_glass(app.handle());
             TAB_GLASS.store(desk_glass(), Ordering::Relaxed);
+            TAB_JA.store(desk_language() == "ja", Ordering::Relaxed);
             // ~/Library/Application Support/<identifier>/ on macOS
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
