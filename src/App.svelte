@@ -220,11 +220,18 @@
 		if (current) lastIn[current.favorite ? 'favorites' : 'others'] = current.id;
 	});
 
-	function toColumn(side: 'favorites' | 'others') {
+	/** ⇧ + an arrow: the tab above / below, or the other column; `takeKeys`: the page keeps the keys */
+	function walk(key: string, takeKeys: boolean) {
+		if (key === 'ArrowDown') cycle(1, takeKeys);
+		else if (key === 'ArrowUp') cycle(-1, takeKeys);
+		else if (key === 'ArrowLeft' || key === 'ArrowRight') toColumn(key === 'ArrowLeft' ? 'favorites' : 'others', takeKeys);
+	}
+
+	function toColumn(side: 'favorites' | 'others', takeKeys = false) {
 		const list = side === 'favorites' ? favorites : others;
 		if (!list.length) return;
 		const tab = list.find(t => t.id === lastIn[side]) ?? list[0];
-		activate(tab.id, false);
+		activate(tab.id, takeKeys);
 	}
 
 	// the open tab is kept in sight when the column scrolls
@@ -298,15 +305,10 @@
 
 	// keys that reach the UI (a page keeps its own; ⌘ shortcuts come from the menu)
 	function handleKeydown(e: KeyboardEvent) {
-		// ⇧ + arrows walk the tabs, only while the UI has the keys: on a page they stay the page's (and
-		// in a field ⇧← / ⇧→ still select its words)
-		const sideways = e.key === 'ArrowLeft' || e.key === 'ArrowRight';
-		if (e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey && popup === 'none' && e.key.startsWith('Arrow')
-			&& !(sideways && e.target instanceof HTMLInputElement)) {
+		// ⇧ + arrows walk the tabs, in a field too (on a page: video.js, the 'key' event)
+		if (e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey && popup === 'none' && e.key.startsWith('Arrow')) {
 			e.preventDefault();
-			if (e.key === 'ArrowDown') cycle(1, false);
-			else if (e.key === 'ArrowUp') cycle(-1, false);
-			else toColumn(e.key === 'ArrowLeft' ? 'favorites' : 'others');
+			walk(e.key, false);
 			return;
 		}
 		if (popup !== 'none') {
@@ -354,6 +356,8 @@
 				if (e.loading !== undefined) loading[tab.id] = e.loading;
 			}),
 			ui.listen<string>('open', ({ payload }) => openTab(payload)),
+			// ⇧ + an arrow on a page, in its fields too
+			ui.listen<string>('key', ({ payload }) => popup === 'none' && walk(payload, true)),
 			ui.listen<string>('menu', ({ payload }) => command(payload)),
 		];
 		// pages that change the address without loading (history.pushState) send no event

@@ -108,6 +108,24 @@
 	window.addEventListener('resize', () => filling() && fit());
 	document.addEventListener('loadedmetadata', () => filling() && fit(), true);
 
+	// ⇧ + an arrow walks ReSurf's tabs, in the page's fields too: told to lib.rs through the title (a page
+	// has no other way to it), which is put back a moment later
+	const KEY = '⟦resurf-key⟧';
+	document.addEventListener(
+		'keydown',
+		(e) => {
+			if (!e.shiftKey || e.altKey || e.metaKey || e.ctrlKey || !e.key.startsWith('Arrow')) return;
+			e.preventDefault();
+			e.stopImmediatePropagation();
+			const title = document.title;
+			document.title = KEY + e.key;
+			setTimeout(() => {
+				if (document.title.startsWith(KEY)) document.title = title;
+			}, 60);
+		},
+		true
+	);
+
 	document.addEventListener(
 		'keydown',
 		(e) => {

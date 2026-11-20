@@ -482,6 +482,11 @@ fn create_tab<R: Runtime>(app: &AppHandle<R>, window: &tauri::Window<R>, id: u64
             to_ui(&load_app, &load_ui, "tab", TabEvent { id, url, loading: Some(loading), ..Default::default() });
         })
         .on_document_title_changed(move |_, title| {
+            // ⇧ + an arrow on the page (video.js), not a title
+            if let Some(key) = title.strip_prefix("⟦resurf-key⟧") {
+                to_ui(&title_app, &title_ui, "key", key.to_string());
+                return;
+            }
             to_ui(&title_app, &title_ui, "tab", TabEvent { id, title: Some(title), ..Default::default() });
         })
         // links that want a new window (target=_blank, window.open) open as a new tab
