@@ -112,7 +112,6 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         apply()
         // every minute: the tabs left alone half an hour sleep
         sleeper = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in self?.sleepTabs() }
-        if searching { DispatchQueue.main.async { self.search.focus() } }
     }
 
     private func keep() {
@@ -516,14 +515,14 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         popup = nil
         popupKeys = nil
         current?.web?.isHidden = false
-        if searching { search.focus() } else if let w = current?.web { window?.makeFirstResponder(w) }
+        if searching { window?.makeFirstResponder(self) } else if let w = current?.web { window?.makeFirstResponder(w) }
     }
 
     func openInfo() {
         if popup != nil { return closePopup() }
         let n = tabs.count, f = favorites.count
         let shortcuts: [(String, String)] = [
-            ("⌘ N", "New window (its own tabs)"), ("⌘ T", "New tab"), ("⌘ L", "Edit address"), ("⌘ W", "Close tab"),
+            ("⌘ N", "New window (its own tabs)"), ("⌘ T", "New tab"), ("⌘ L", "Edit address"), ("⌘ ⇧ W", "Close tab"),
             ("⌘ D", "Favourite"), ("⌘ [ / ⌘ ]", "Back / forward"), ("⌘ R", "Reload"), ("⌘ F", "Video fills the page"),
             ("⇧ ↑ / ⇧ ↓", "Previous / next tab"), ("⇧ ← / ⇧ →", "Favourites / other tabs"), ("⌘ ⇧ F", "Page fills the window"),
             ("⌘ I", "Info"), ("Right click", "Tab actions"),
@@ -608,6 +607,13 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         // ⇧ + arrows walk the tabs (in a page, page.js tells of them)
         if mods == .shift, let a = arrows[e.keyCode], !(window?.firstResponder is WKWebView) {
             walk(a, takeKeys: false)
+            return true
+        }
+        // on the Search page with no cursor yet: the first letter typed puts it there, and goes in
+        if searching && !search.editing && mods.isSubset(of: .shift), arrows[e.keyCode] == nil,
+           let ch = e.characters, !ch.isEmpty, ch.unicodeScalars.allSatisfy({ !CharacterSet.controlCharacters.contains($0) && $0.value < 0xF700 }) {
+            search.focus()
+            (search.currentEditor() as? NSTextView)?.insertText(ch, replacementRange: NSRange(location: NSNotFound, length: 0))
             return true
         }
         if search.editing {

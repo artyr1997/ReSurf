@@ -82,7 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let nw = tabs.addItem(withTitle: "New Window", action: #selector(newWindow(_:)), keyEquivalent: "n")
         nw.target = self
         item(tabs, "Edit Address", "address", "l")
-        item(tabs, "Close Tab", "close", "w")
+        item(tabs, "Close Tab", "close", "w", [.command, .shift])
         item(tabs, "Favourite", "favo", "d")
         tabs.addItem(.separator())
         item(tabs, "Next Tab", "next-tab", "\t", .control)
@@ -101,7 +101,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let window = NSMenu(title: "Window")
         window.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
-        item(window, "Close Window", "close-window", "w", [.command, .shift])
+        item(window, "Close Window", "close-window", "w")
         bar.addItem(withTitle: "Window", action: nil, keyEquivalent: "").submenu = window
         NSApp.windowsMenu = window
         return bar
