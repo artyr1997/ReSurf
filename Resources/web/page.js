@@ -1,0 +1,144 @@
+// The page's side of ReSurf: written on glass (Google's results in the desk's white ink, search.js), the video
+// filling the page (⌘F), and ⇧ + an arrow going to the app.
+// glass kept on the page's root whatever the page does with its classes (Google sets its own)
+(() => {
+	const glass = () => document.documentElement && !document.documentElement.classList.contains('resurf-glass') && document.documentElement.classList.add('resurf-glass');
+	glass();
+	new MutationObserver(glass).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+	document.addEventListener('DOMContentLoaded', glass);
+	addEventListener('load', glass);
+})();
+// ⌘F: the page's video fills the whole page (not the screen: the window stays as it is).
+// The video is taken with its player, so the controls come along; ⌘F again or Esc puts it back.
+// The app calls window.__resurfVideo() in the tab (Tabs.swift).
+(() => {
+	if (window.__resurfVideo) return;
+
+	const MARK = 'data-resurf-video';
+	const PATH = 'data-resurf-video-path';
+	const INNER = 'data-resurf-video-inner';
+	const COVER = 'data-resurf-video-cover';
+	const css = `
+		[${MARK}] {
+			position: fixed !important; inset: 0 !important; width: 100vw !important; height: 100vh !important;
+			max-width: none !important; max-height: none !important; margin: 0 !important;
+			z-index: 2147483647 !important; background: #000 !important; transform: none !important;
+			border-radius: 0 !important;
+		}
+		/* inside the player, the video and what holds it fill it too (players size them for the old box) */
+		[${INNER}] {
+			position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important;
+			max-width: none !important; max-height: none !important; min-height: 0 !important;
+			margin: 0 !important; padding: 0 !important; transform: none !important;
+			/* square, as the page it fills (YouTube rounds its player) */
+			border-radius: 0 !important;
+		}
+		video[${MARK}], video[${INNER}] { object-fit: contain !important; }
+		/* nearly the page's shape: a few pixels cut off rather than black bars along the edges */
+		video[${COVER}] { object-fit: cover !important; }
+		/* what would hold a fixed element inside its parent, or under the page */
+		[${PATH}] {
+			transform: none !important; filter: none !important; perspective: none !important;
+			contain: none !important; will-change: auto !important; backdrop-filter: none !important;
+			z-index: 2147483647 !important; overflow: visible !important;
+		}
+		html:has([${MARK}]), html:has([${MARK}]) body { overflow: hidden !important; }
+	`;
+	let style = null;
+
+	const area = (el) => {
+		const r = el.getBoundingClientRect();
+		return r.width > 0 && r.height > 0 ? r.width * r.height : 0;
+	};
+
+	// the playing video, else the biggest one; else a big embedded player (YouTube on another site)
+	function pick() {
+		const videos = [...document.querySelectorAll('video')].filter((v) => area(v) > 0);
+		const playing = videos.filter((v) => !v.paused && !v.ended);
+		const pool = playing.length ? playing : videos;
+		if (pool.length) return pool.sort((a, b) => area(b) - area(a))[0];
+		const frames = [...document.querySelectorAll('iframe')].filter(
+			(f) => area(f) >= 200 * 150 && /youtube|vimeo|player|video|embed|twitch|dailymotion/i.test(f.src)
+		);
+		return frames.sort((a, b) => area(b) - area(a))[0] ?? null;
+	}
+
+	// a video sits in its player: the outermost box still about its size (that one has the controls)
+	function player(el) {
+		const own = el.getBoundingClientRect();
+		let box = el;
+		for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+			const r = p.getBoundingClientRect();
+			if (r.width > own.width * 1.15 + 8 || r.height > own.height * 1.15 + 8) break;
+			if (r.width >= own.width - 2 && r.height >= own.height - 2) box = p;
+		}
+		return box;
+	}
+
+	function on() {
+		const video = pick();
+		if (!video) return;
+		const box = video.tagName === 'IFRAME' ? video : player(video);
+		if (!style) {
+			style = document.createElement('style');
+			style.textContent = css;
+		}
+		(document.head || document.documentElement).appendChild(style);
+		box.setAttribute(MARK, '');
+		for (let p = video; p && p !== box; p = p.parentElement) p.setAttribute(INNER, '');
+		for (let p = box.parentElement; p && p !== document.documentElement; p = p.parentElement) p.setAttribute(PATH, '');
+		fit();
+		// players lay their video out again when the window changes
+		window.dispatchEvent(new Event('resize'));
+	}
+
+	function off() {
+		for (const el of document.querySelectorAll(`[${MARK}], [${PATH}], [${INNER}]`)) {
+			for (const name of [MARK, PATH, INNER, COVER]) el.removeAttribute(name);
+		}
+		style?.remove();
+		window.dispatchEvent(new Event('resize'));
+	}
+
+	const filling = () => !!document.querySelector(`[${MARK}]`);
+
+	// cover when the video's shape is within 12% of the page's; a tall or square video keeps its bars
+	function fit() {
+		for (const video of document.querySelectorAll(`video[${MARK}], video[${INNER}]`)) {
+			const shape = video.videoWidth / video.videoHeight;
+			const page = innerWidth / innerHeight;
+			const close = shape > 0 && Math.abs(Math.log(shape / page)) < Math.log(1.12);
+			video.toggleAttribute(COVER, close);
+		}
+	}
+
+	window.__resurfVideo = () => (filling() ? off() : on());
+
+	// the window resized, or the next video (another shape) began
+	window.addEventListener('resize', () => filling() && fit());
+	document.addEventListener('loadedmetadata', () => filling() && fit(), true);
+
+	// ⇧ + an arrow walks ReSurf's tabs, in the page's fields too: told to the app straight
+	document.addEventListener(
+		'keydown',
+		(e) => {
+			if (!e.shiftKey || e.altKey || e.metaKey || e.ctrlKey || !e.key.startsWith('Arrow')) return;
+			if (window.top !== window) return;
+			e.preventDefault();
+			e.stopImmediatePropagation();
+			window.webkit?.messageHandlers?.resurf?.postMessage({ key: e.key });
+		},
+		true
+	);
+	document.addEventListener(
+		'keydown',
+		(e) => {
+			if (e.key === 'Escape' && filling()) {
+				e.preventDefault();
+				e.stopImmediatePropagation();
+				off();
+			}
+		},
+		true
+	);
+})();
