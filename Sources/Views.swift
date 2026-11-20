@@ -301,6 +301,9 @@ final class Field: NSTextField, NSTextFieldDelegate {
 
     required init?(coder: NSCoder) { fatalError() }
 
+    // not in the key view loop: a window opening doesn't put the cursor here by itself (a click or focus() does)
+    override var canBecomeKeyView: Bool { false }
+
     private func showPlaceholder() {
         placeholderAttributedString = attributed(placeholder, font ?? Fonts.words(18), Ink.line.withAlphaComponent(0.5 * placeholderAlpha), align: alignment)
     }
