@@ -167,7 +167,7 @@ enum Desk {
         // "hide-window <pid> <n>" / "show-window …" one window out of sight on another desktop, or back
         // a window closed is no longer put away (a closed window stays in NSApp.windows)
         NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: nil, queue: .main) { note in
-            if let w = note.object as? NSWindow { putAway.remove(w.windowNumber) }
+            if let w = note.object as? NSWindow { putAway[w.windowNumber] = nil }
         }
         center.addObserver(forName: .init("com.artursavytskyi.re.windows"), object: nil, queue: .main) { note in
             guard let said = note.object as? String else { return }
@@ -176,15 +176,15 @@ enum Desk {
             if words.count == 3, words[0] == "hide-window" || words[0] == "show-window" {
                 guard words[1] == me, let n = Int(words[2]), let w = NSApp.window(withWindowNumber: n) else { return }
                 if words[0] == "hide-window" {
-                    putAway.insert(n)
+                    putAway[n] = w
                     Fade.windows([w], to: 0) {
                         // shown again before it was done fading: it stays
-                        guard putAway.contains(n) else { return }
+                        guard putAway[n] != nil else { return }
                         w.orderOut(nil)
                         w.alphaValue = 1
                     }
                 } else {
-                    putAway.remove(n)
+                    putAway[n] = nil
                     w.alphaValue = 0
                     w.orderFront(nil)
                     Fade.windows([w], to: 1)
@@ -249,6 +249,7 @@ final class ReApp: NSApplication {
     }
 }
 
-/// The windows put away on another of ReDesk's desktops, by number. Ordered out, the last of them would
-/// count as the last window closed and quit the app (and they'd never come back): they keep it running.
-var putAway = Set<Int>()
+/// The windows put away on another of ReDesk's desktops, by number, held here: out of sight, nothing else
+/// keeps one (AppKit lets it go, and it never comes back); and the last of them would count as the last
+/// window closed and quit the app: they keep it running.
+var putAway: [Int: NSWindow] = [:]
