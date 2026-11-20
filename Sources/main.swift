@@ -37,7 +37,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         (NSApp.keyWindow as? SurfWindow ?? NSApp.windows.compactMap { $0 as? SurfWindow }.first)?.main.command(id)
     }
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    // quits when its last window is closed, not when its windows are put away on another of ReDesk's desktops
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { putAway.isEmpty }
 
     func applicationWillTerminate(_ notification: Notification) {
         for case let w as SurfWindow in NSApp.windows { w.main.leave() }
