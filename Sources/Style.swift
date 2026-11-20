@@ -104,6 +104,7 @@ final class Lang {
 
     // the popups' words
     private let texts: [String: String] = [
+        "Search": "検索",
         "Open": "開く",
         "Copy link": "リンクをコピー",
         "Remove from favourites": "お気に入りから外す",

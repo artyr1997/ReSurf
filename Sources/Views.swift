@@ -297,6 +297,9 @@ final class Field: NSTextField, NSTextFieldDelegate {
         cell?.wraps = false
         cell?.lineBreakMode = .byClipping
         delegate = self
+        NotificationCenter.default.addObserver(forName: Lang.changed, object: nil, queue: .main) { [weak self] _ in
+            if let self, self.currentEditor() == nil { self.showPlaceholder() }
+        }
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -305,7 +308,8 @@ final class Field: NSTextField, NSTextFieldDelegate {
     override var canBecomeKeyView: Bool { false }
 
     private func showPlaceholder() {
-        placeholderAttributedString = attributed(placeholder, font ?? Fonts.words(18), Ink.line.withAlphaComponent(0.5 * placeholderAlpha), align: alignment)
+        // in the app's language (Search: 検索), as it turns
+        placeholderAttributedString = attributed(tx(placeholder), font ?? Fonts.words(18), Ink.line.withAlphaComponent(0.5 * placeholderAlpha), align: alignment)
     }
 
     override func becomeFirstResponder() -> Bool {
