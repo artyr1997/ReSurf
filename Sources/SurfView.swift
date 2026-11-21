@@ -453,10 +453,10 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
                              y: top ? self.H * 0.0625 + 8 : self.H - self.H * 0.0625 - h, width: SideButton.width, height: h)
             b.isHidden = !sides
         }
-        place(nova, true, true)
+        place(favo, true, true)
         place(info, true, false)
         info.top = false
-        place(favo, false, true)
+        place(nova, false, true)
         place(fullButton, false, false)
         fullButton.chosen = full
 
