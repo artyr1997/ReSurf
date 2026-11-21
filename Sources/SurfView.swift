@@ -34,7 +34,6 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
     private let strip = DragStrip()
     private var popup: Popup?
     private var popupKeys: ((NSEvent) -> Bool)?
-    private var toast: Toast?
     private var sleeper: Timer?
     private var saving: DispatchWorkItem?
     private var observers: [Int: [NSKeyValueObservation]] = [:]
@@ -491,7 +490,6 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         marks.frame = NSRect(x: 14, y: 14, width: 13, height: 40)
         marks.isHidden = fullShown
         popup?.frame = bounds
-        toast?.place(in: bounds)
     }
 
     // ── popups ──

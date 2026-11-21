@@ -1,6 +1,6 @@
 import AppKit
 
-// The popups (the page blurred behind, a pane in the middle, a line round it), their pieces, and the toast:
+// The popups (the page blurred behind, a pane in the middle, a line round it), their pieces:
 // a word written down in a frame that comes down from the top a moment.
 
 func heading(_ s: String) -> NSTextField { label(s, Fonts.buttons(18), kern: 7.2) }
@@ -144,64 +144,5 @@ final class Popup: Flipped {
     override func mouseDown(with event: NSEvent) {
         if !pane.frame.contains(convert(event.locationInWindow, from: nil)) { onClose?() }
     }
-}
-
-/// SAVED: a frame coming down from the top, its word written down
-final class Toast: Flipped {
-    private let word: String
-    /// its letters' size (16 in ReFile), each with 0.6em after it
-    private let size: CGFloat
-    private var advance: CGFloat { size * 1.6 }
-
-    init(_ word: String, size: CGFloat = 16) {
-        self.word = word
-        self.size = size
-        super.init(frame: .zero)
-        let blur = veil()
-        blur.autoresizingMask = [.width, .height]
-        addSubview(blur)
-        wantsLayer = true
-        layer?.backgroundColor = Ink.pane.cgColor
-    }
-
-    required init?(coder: NSCoder) { fatalError() }
-
-    var height: CGFloat { CGFloat(word.count) * advance + 48 - size * 0.6 }
-
-    func place(in bounds: NSRect) {
-        frame = NSRect(x: (bounds.width - 42) / 2, y: 0, width: 42, height: height)
-        subviews.first?.frame = self.bounds
-    }
-
-    func comeDown() {
-        let from = frame
-        frame.origin.y = -height
-        alphaValue = 0
-        NSAnimationContext.runAnimationGroup { c in
-            c.duration = 0.3
-            c.timingFunction = CAMediaTimingFunction(controlPoints: 0.22, 1, 0.36, 1)
-            animator().frame = from
-            animator().alphaValue = 1
-        }
-    }
-
-    override func draw(_ dirtyRect: NSRect) {
-        // its frame: no top, the window's edge is
-        Ink.line.setFill()
-        NSRect(x: 0, y: 0, width: 2, height: bounds.height).fill()
-        NSRect(x: bounds.width - 2, y: 0, width: 2, height: bounds.height).fill()
-        NSRect(x: 0, y: bounds.height - 2, width: bounds.width, height: 2).fill()
-        let attrs: [NSAttributedString.Key: Any] = [.font: Fonts.buttons(size), .foregroundColor: Ink.text]
-        let total = CGFloat(word.count) * advance - size * 0.6
-        var y = (bounds.height - total) / 2
-        for letter in word {
-            let s = NSAttributedString(string: String(letter), attributes: attrs)
-            let size = s.size()
-            s.draw(at: NSPoint(x: (bounds.width - size.width) / 2, y: y + (self.size - size.height) / 2 + 1))
-            y += advance
-        }
-    }
-
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
