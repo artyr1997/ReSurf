@@ -84,7 +84,15 @@ final class Root: Flipped {
     let main: SurfView
 
     /// joined to others (Flush): ReDesk lays one glass under them all, the window drops its own
-    var shared = false { didSet { glass.isHidden = shared } }
+    var shared = false {
+        didSet {
+            glass.isHidden = shared
+            // a window with nothing under it lets a click through to the desktop, where macOS takes it for a click on
+            // the wallpaper and slides every window aside: a wash too faint to see keeps the clicks the window's
+            wantsLayer = true
+            layer?.backgroundColor = shared ? NSColor(white: 0, alpha: 0.01).cgColor : nil
+        }
+    }
 
     init(main: SurfView) {
         self.main = main
