@@ -41,10 +41,15 @@ enum Render {
     }
 }
 
-// --probe <url>: a page loaded out of sight, then what its root and its first result say of themselves
+// --probe <url> [--size W×H]: a page loaded out of sight, then what its root and its first result say of themselves
 enum Probe {
     static func run(_ url: String) {
-        let w = SurfWindow(frame: NSRect(x: 0, y: 0, width: 1440, height: 900))
+        var size = NSSize(width: 1440, height: 900)
+        if let i = CommandLine.arguments.firstIndex(of: "--size"), i + 1 < CommandLine.arguments.count {
+            let parts = CommandLine.arguments[i + 1].split(whereSeparator: { "x×".contains($0) }).compactMap { Double($0) }
+            if parts.count == 2 { size = NSSize(width: parts[0], height: parts[1]) }
+        }
+        let w = SurfWindow(frame: NSRect(origin: .zero, size: size))
         w.main.isMain = false
         w.main.frame = w.contentView!.bounds
         w.main.start()
@@ -53,7 +58,9 @@ enum Probe {
         let js = """
         JSON.stringify({cls: document.documentElement.className, scripts: !!window.__resurfVideo, search: !!window.__resurfSearch,
           title: (() => { const t = document.querySelector('#resurf-search .re-title'); return t ? getComputedStyle(t).color : 'none'; })(),
-          text: getComputedStyle(document.documentElement).getPropertyValue('--text'), dark: matchMedia('(prefers-color-scheme: dark)').matches})
+          text: getComputedStyle(document.documentElement).getPropertyValue('--text'), dark: matchMedia('(prefers-color-scheme: dark)').matches,
+          width: innerWidth, results: document.querySelectorAll('#resurf-search li').length,
+          rise: (() => { const li = document.querySelector('#resurf-search li'); return li ? getComputedStyle(li).animationName + ' ' + getComputedStyle(li).animationDuration : 'none'; })()})
         """
         var done = false
         w.main.current?.web?.evaluateJavaScript(js) { r, e in
