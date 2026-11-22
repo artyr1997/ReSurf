@@ -58,8 +58,13 @@ enum OwnKeys {
         own = (all[app] ?? [:]).compactMapValues(Combo.init(kept:)).filter { standard[$0.key] != nil }
     }
 
+    /// set on the events made here: one comes back (a page that didn't take it hands it on again) and is
+    /// left as it is, not turned back into the key it came from
+    private static let mark: Int64 = 0x5245_5350
+
     private static func translate(_ event: NSEvent) -> NSEvent? {
         guard !own.isEmpty else { return event }
+        if event.cgEvent?.getIntegerValueField(.eventSourceUserData) == mark { return event }
         let pressed = Combo(event)
         // a key of one's own: handed on as the one it stands for
         if let (what, _) = own.first(where: { $0.value == pressed }), let was = standard[what] {
@@ -68,6 +73,7 @@ enum OwnKeys {
             if let cg = CGEvent(keyboardEventSource: nil, virtualKey: was.combo.key, keyDown: true) {
                 cg.flags = CGEventFlags(rawValue: UInt64(was.combo.flags.rawValue))
                 if event.isARepeat { cg.setIntegerValueField(.keyboardEventAutorepeat, value: 1) }
+                cg.setIntegerValueField(.eventSourceUserData, value: mark)
                 if let made = NSEvent(cgEvent: cg) { return made }
             }
             let flags = event.modifierFlags.subtracting(Combo.modifiers).union(was.combo.flags)
