@@ -27,7 +27,8 @@ enum OwnKeys {
         static func == (a: Combo, b: Combo) -> Bool { a.key == b.key && a.flags.rawValue == b.flags.rawValue }
     }
 
-    /// what each of the app's keys is, as it came: the key, and the character it types
+    /// what each of the app's keys is, as it came: the key, and the character it types (used only if the key's
+    /// event can't be made as the system makes it)
     struct Standard {
         let combo: Combo
         let character: String
@@ -62,6 +63,13 @@ enum OwnKeys {
         let pressed = Combo(event)
         // a key of one's own: handed on as the one it stands for
         if let (what, _) = own.first(where: { $0.value == pressed }), let was = standard[what] {
+            // made as the system makes a key's event (its characters from the keyboard), which the menus and
+            // the views take as the key itself; one made by NSEvent.keyEvent is matched to the wrong item
+            if let cg = CGEvent(keyboardEventSource: nil, virtualKey: was.combo.key, keyDown: true) {
+                cg.flags = CGEventFlags(rawValue: UInt64(was.combo.flags.rawValue))
+                if event.isARepeat { cg.setIntegerValueField(.keyboardEventAutorepeat, value: 1) }
+                if let made = NSEvent(cgEvent: cg) { return made }
+            }
             let flags = event.modifierFlags.subtracting(Combo.modifiers).union(was.combo.flags)
             let typed = was.combo.flags.contains(.shift) ? was.character.uppercased() : was.character
             return NSEvent.keyEvent(with: .keyDown, location: event.locationInWindow, modifierFlags: flags,
