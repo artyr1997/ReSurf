@@ -26,6 +26,9 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
     private let card = Flipped()
     private let stage = Flipped()
     private let titleButton = WordButton("", font: Fonts.words(16)) {}
+    /// a search just made: its words rise from the field in the middle to the title at the top
+    private var riseFrom: NSRect?
+    private var rising = false
     private let back = WordButton("<", font: Fonts.buttons(26)) {}
     private let forward = WordButton(">", font: Fonts.buttons(26)) {}
     private let pathButton = WordButton("", font: Fonts.words(16)) {}
@@ -252,6 +255,7 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         let q = search.stringValue
         guard !q.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         let url = Address.url(q)
+        if Address.isSearch(url), !search.isHidden { riseFrom = search.frame }
         search.stringValue = ""
         if editing == "address", let c = current {
             c.url = url
@@ -441,6 +445,8 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         favo.chosen = c.favorite
     }
 
+    private var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+
     override func layout() {
         super.layout()
         let sides = !small && !fullShown
@@ -476,7 +482,24 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
 
         let titleW = W * (small ? 1 : 0.6) - (small ? 200 : 0)
         let ty = small ? 22 - 12 : H * 0.03125 + 12 - 12
-        titleButton.frame = NSRect(x: (W - titleW) / 2, y: ty, width: titleW, height: 24)
+        let titleFrame = NSRect(x: (W - titleW) / 2, y: ty, width: titleW, height: 24)
+        if let from = riseFrom, !titleButton.isHidden, !reduceMotion {
+            // from where the words were typed, up to their place, as the results come in under them
+            riseFrom = nil
+            rising = true
+            titleButton.frame = NSRect(x: titleFrame.minX, y: from.midY - titleFrame.height / 2, width: titleFrame.width, height: titleFrame.height)
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.9
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                titleButton.animator().frame = titleFrame
+            }, completionHandler: { [weak self] in
+                self?.rising = false
+                self?.needsLayout = true
+            })
+        } else if !rising {
+            riseFrom = nil
+            titleButton.frame = titleFrame
+        }
         let py = H - (small ? 22 : H * 0.03125 + 12) - 12
         let pw = min(W * 0.7 - 120, max(40, attributed(pathButton.word, Fonts.words(16)).size().width + 8))
         pathButton.frame = NSRect(x: (W - pw) / 2, y: py, width: pw, height: 24)

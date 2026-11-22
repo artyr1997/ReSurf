@@ -67,6 +67,10 @@
 		#resurf-search > div { max-width: 1040px; margin: 0 auto; padding: 48px 16px 64px; }
 		#resurf-search ol { list-style: none; margin: 0; padding: 0; }
 		#resurf-search li { margin: 0 0 28px; }
+		/* the results come in one after another, each rising a little as it shows (as on getrespace.app) */
+		@keyframes re-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+		#resurf-search li { animation: re-rise 0.8s ease both; animation-delay: calc(var(--i, 0) * 0.26s); }
+		@media (prefers-reduced-motion: reduce) { #resurf-search li { animation: none; } }
 		#resurf-search a.re-result { display: block; color: inherit; text-decoration: none; outline: none; }
 		#resurf-search .re-title {
 			font-size: 20px; line-height: 30px; padding: 0.15em 0.45em; margin: -0.15em -0.45em;
@@ -194,8 +198,10 @@
 	}
 	function list(results) {
 		const ol = document.createElement('ol');
-		for (const r of results) {
+		for (const [i, r] of results.entries()) {
 			const li = document.createElement('li');
+			// the first ones one after another, the rest (out of sight below) with the last of them
+			li.style.setProperty('--i', String(Math.min(i, 8)));
 			const a = document.createElement('a');
 			a.className = 're-result';
 			a.href = r.href;
