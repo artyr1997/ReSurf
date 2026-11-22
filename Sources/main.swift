@@ -5,6 +5,12 @@ import WebKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // keys of one's own, as set in ReDesk's keys popup (⌘/)
+        OwnKeys.start(app: "ReSurf", standard: [
+            "newWindow": .init(45, "n"), "newTab": .init(17, "t"), "address": .init(37, "l"), "closeTab": .init(13, "w", [.command, .shift]),
+            "nextTab": .init(48, "\t", .control), "reload": .init(15, "r"), "favourite": .init(2, "d"), "video": .init(3, "f"),
+            "pageFull": .init(3, "f", [.command, .shift]), "info": .init(34, "i"),
+        ])
         NSApp.appearance = NSAppearance(named: .darkAqua)
         NSApp.mainMenu = menu()
         Lang.shared.follow()
