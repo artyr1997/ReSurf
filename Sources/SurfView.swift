@@ -335,10 +335,56 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         }
     }
 
+    /// the page moving between its place and the whole window: its frame left to the animation meanwhile
+    private var fullMoving = false
+
+    /// FULL (⌘⇧F): the page grows from its place to the whole window as the buttons, the tabs' dashes and
+    /// the title fade away; back, it shrinks to its place as they come back
     func toggleFull() {
+        let chrome: [NSView] = [favo, info, nova, fullButton, left, right, titleButton, back, forward, pathButton, marks]
+        guard !fullMoving, !searching, current != nil, popup == nil, !reduceMotion, window?.isVisible == true else {
+            full.toggle()
+            keep()
+            apply()
+            return
+        }
+        layoutSubtreeIfNeeded()
+        let from = card.frame
+        let before = chrome.filter { !$0.isHidden }
+        // each as faint as it is (back and forward are quieter, the title while the page loads)
+        let was = before.map(\.alphaValue)
         full.toggle()
         keep()
         apply()
+        layoutSubtreeIfNeeded()
+        let to = card.frame
+        let after = chrome.filter { !$0.isHidden }
+        // from where it was
+        fullMoving = true
+        card.frame = from
+        stage.frame = from
+        stage.subviews.first?.frame = stage.bounds
+        // going: what was shown stays to fade out; coming back: what comes back fades in
+        let going = before.filter { !after.contains($0) }
+        let coming = after.filter { !before.contains($0) }
+        for (view, alpha) in zip(before, was) where going.contains(view) { view.isHidden = false; view.alphaValue = alpha }
+        let target = coming.map(\.alphaValue)
+        coming.forEach { $0.alphaValue = 0 }
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.55
+            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.7, 0.2, 1)
+            context.allowsImplicitAnimation = true
+            card.animator().frame = to
+            stage.animator().frame = to
+            going.forEach { $0.animator().alphaValue = 0 }
+            for (view, alpha) in zip(coming, target) { view.animator().alphaValue = alpha }
+        }, completionHandler: { [weak self] in
+            guard let self else { return }
+            self.fullMoving = false
+            for (view, alpha) in zip(before, was) where going.contains(view) { view.alphaValue = alpha }
+            // what shows as it should, the page where it belongs
+            self.apply()
+        })
     }
 
     // ── what a page says ──
@@ -428,6 +474,8 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         if w.superview !== stage {
             stage.subviews.forEach { $0.removeFromSuperview() }
             stage.addSubview(w)
+            // it follows the stage as it moves (FULL)
+            w.autoresizingMask = [.width, .height]
         }
         w.isHidden = popup != nil
         titleButton.word = results ? Address.query(c.url) : Address.host(c.url)
@@ -476,9 +524,11 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         if fullShown { page = bounds.insetBy(dx: 6, dy: 6) } else if small { page = NSRect(x: 36, y: 44, width: W - 72, height: H - 88) } else {
             page = NSRect(x: W * 0.0625 + 80, y: H * 0.0625 + 24, width: W - 2 * (W * 0.0625 + 80), height: H - 2 * (H * 0.0625 + 24))
         }
-        card.frame = page
-        stage.frame = page
-        stage.subviews.first?.frame = stage.bounds
+        if !fullMoving {
+            card.frame = page
+            stage.frame = page
+            stage.subviews.first?.frame = stage.bounds
+        }
 
         let titleW = W * (small ? 1 : 0.6) - (small ? 200 : 0)
         let ty = small ? 22 - 12 : H * 0.03125 + 12 - 12
