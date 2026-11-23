@@ -341,7 +341,8 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
     /// FULL (⌘⇧F): the page grows from its place to the whole window as the buttons, the tabs' dashes and
     /// the title fade away; back, it shrinks to its place as they come back
     func toggleFull() {
-        let chrome: [NSView] = [favo, info, nova, fullButton, left, right, titleButton, back, forward, pathButton, marks]
+        // (the diamond stays: the window's mark, in full too)
+        let chrome: [NSView] = [favo, info, nova, fullButton, left, right, titleButton, back, forward, pathButton]
         guard !fullMoving, !searching, current != nil, popup == nil, !reduceMotion, window?.isVisible == true else {
             full.toggle()
             keep()
@@ -563,7 +564,8 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         search.frame = NSRect(x: (W - sw) / 2, y: H / 2 - 16, width: sw, height: 32)
         strip.frame = NSRect(x: 0, y: 0, width: W, height: 28)
         marks.frame = NSRect(x: 14, y: 14, width: 13, height: 40)
-        marks.isHidden = fullShown
+        // the window's diamond on top of all, a page or a film filling the window too
+        marks.isHidden = false
         popup?.frame = bounds
     }
 
