@@ -99,6 +99,7 @@ final class Popup: Flipped {
     var keys: ((NSEvent) -> Bool)?
     var onClose: (() -> Void)?
     private let pane = Flipped()
+    private let marks = CornerMarks()
     private let content: NSView
     private let scroll = FadeScroll()
     private let page = Flipped()
@@ -116,13 +117,13 @@ final class Popup: Flipped {
         pane.addSubview(paneBlur)
         pane.wantsLayer = true
         pane.layer?.backgroundColor = Ink.pane.cgColor
-        pane.layer?.borderColor = Ink.line.cgColor
-        pane.layer?.borderWidth = 2
         // taller than the window allows: it scrolls, its lines fading at the edges
         page.addSubview(content)
         scroll.documentView = page
         pane.addSubview(scroll)
         addSubview(pane)
+        // no frame round the pane: a + at each of its corners
+        addSubview(marks)
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -133,6 +134,8 @@ final class Popup: Flipped {
         let fit = content.fittingSize
         let w = max(280, fit.width + 96), h = min(fit.height + 80, bounds.height * 0.8)
         pane.frame = NSRect(x: (bounds.width - w) / 2, y: (bounds.height - h) / 2, width: w, height: h).integral
+        marks.frame = bounds
+        marks.pane = pane.frame
         pane.subviews.first?.frame = pane.bounds
         scroll.frame = NSRect(x: 2, y: 2, width: pane.bounds.width - 4, height: pane.bounds.height - 4)
         page.frame = NSRect(x: 0, y: 0, width: scroll.bounds.width, height: fit.height + 76)
@@ -146,3 +149,24 @@ final class Popup: Flipped {
     }
 }
 
+/// a pane's four corners marked with a thin + instead of a frame round it (as ReDesk marks windows' corners)
+final class CornerMarks: NSView {
+    static let arm: CGFloat = 7
+    /// the pane it marks, in this view's coordinates
+    var pane: NSRect = .zero { didSet { needsDisplay = true } }
+    override var isFlipped: Bool { true }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override func draw(_ dirtyRect: NSRect) {
+        let path = NSBezierPath()
+        let a = Self.arm
+        for p in [NSPoint(x: pane.minX, y: pane.minY), NSPoint(x: pane.maxX, y: pane.minY),
+                  NSPoint(x: pane.minX, y: pane.maxY), NSPoint(x: pane.maxX, y: pane.maxY)] {
+            let x = p.x.rounded() + 0.25, y = p.y.rounded() - 0.25
+            path.move(to: NSPoint(x: x - a, y: y)); path.line(to: NSPoint(x: x + a, y: y))
+            path.move(to: NSPoint(x: x, y: y - a)); path.line(to: NSPoint(x: x, y: y + a))
+        }
+        path.lineWidth = 1.5
+        NSColor(white: 1, alpha: 0.5).setStroke()
+        path.stroke()
+    }
+}
