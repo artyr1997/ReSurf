@@ -32,12 +32,39 @@ enum Spacing {
     }
 
     static func start() {
-        DistributedNotificationCenter.default().addObserver(forName: Notification.Name("com.artursavytskyi.re.spacing"), object: nil, queue: .main) { note in
-            // "<bundle> <x|y> <-1|1>": this app's, across or down, nearer the edges or further
+        let center = DistributedNotificationCenter.default()
+        center.addObserver(forName: Notification.Name("com.artursavytskyi.re.spacing"), object: nil, queue: .main) { note in
+            // "<bundle> <x|y> <-1|1> [all]": this app's, across or down, nearer the edges or further; with "all"
+            // (fn A and the arrows) the others given the same
             let parts = (note.object as? String ?? "").split(separator: " ").map(String.init)
-            guard parts.count == 3, parts[0] == Bundle.main.bundleIdentifier, let way = Double(parts[2]) else { return }
+            guard parts.count >= 3, parts[0] == Bundle.main.bundleIdentifier, let way = Double(parts[2]) else { return }
             move(parts[1], CGFloat(way))
+            if parts.count > 3 && parts[3] == "all" {
+                // the others' own settings written too, so one not running finds them when it opens
+                for other in ["com.artursavytskyi.refile", "com.artursavytskyi.resurf", "com.artursavytskyi.renote", "com.artursavytskyi.reterm"]
+                where other != Bundle.main.bundleIdentifier {
+                    CFPreferencesSetAppValue("spacing.x" as CFString, Double(x) as CFNumber, other as CFString)
+                    CFPreferencesSetAppValue("spacing.y" as CFString, Double(y) as CFNumber, other as CFString)
+                    CFPreferencesAppSynchronize(other as CFString)
+                }
+                center.postNotificationName(Notification.Name("com.artursavytskyi.re.spacing.set"),
+                                            object: "\(parts[0]) \(Double(x)) \(Double(y))", userInfo: nil, deliverImmediately: true)
+            }
         }
+        // another app's distances, to take as they are: "<its bundle> <x> <y>"
+        center.addObserver(forName: Notification.Name("com.artursavytskyi.re.spacing.set"), object: nil, queue: .main) { note in
+            let parts = (note.object as? String ?? "").split(separator: " ").map(String.init)
+            guard parts.count == 3, parts[0] != Bundle.main.bundleIdentifier, let nx = Double(parts[1]), let ny = Double(parts[2]) else { return }
+            UserDefaults.standard.set(nx, forKey: "spacing.x")
+            UserDefaults.standard.set(ny, forKey: "spacing.y")
+            relayout()
+        }
+    }
+
+    /// every window laid out again
+    static func relayout() {
+        func mark(_ v: NSView) { v.needsLayout = true; v.subviews.forEach(mark) }
+        for w in NSApp.windows { if let v = w.contentView { mark(v) } }
     }
 
     static func move(_ axis: String, _ way: CGFloat) {
@@ -46,9 +73,7 @@ enum Spacing {
         let next = min(most, max(least, now + way * step))
         guard next != now else { return NSSound.beep() }
         UserDefaults.standard.set(Double(next), forKey: key)
-        // every window laid out again
-        func mark(_ v: NSView) { v.needsLayout = true; v.subviews.forEach(mark) }
-        for w in NSApp.windows { if let v = w.contentView { mark(v) } }
+        relayout()
         if let w = NSApp.keyWindow ?? NSApp.mainWindow { Guides.show(in: w) }
     }
 
