@@ -5,7 +5,12 @@ cd "$(dirname "$0")"
 APP=build/ReSurf.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-swiftc -O -o "$APP/Contents/MacOS/ReSurf" Sources/*.swift
+# for every Mac from macOS 13 on, Apple silicon and Intel both
+for ARCH in arm64 x86_64; do
+  swiftc -O -module-name ReSurf -target $ARCH-apple-macos13.0 -o "build/ReSurf-$ARCH" Sources/*.swift
+done
+lipo -create -output "$APP/Contents/MacOS/ReSurf" build/ReSurf-arm64 build/ReSurf-x86_64
+rm -f build/ReSurf-arm64 build/ReSurf-x86_64
 cp Info.plist "$APP/Contents/"
 cp -R Resources/* "$APP/Contents/Resources/"
 # ad-hoc, known by its identifier rather than by this build's hash
