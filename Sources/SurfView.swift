@@ -503,8 +503,8 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         fullButton.top = true
         let place = { (b: SideButton, left: Bool, top: Bool) in
             let h = b.intrinsicContentSize.height
-            b.frame = NSRect(x: left ? self.W * 0.0625 - 28 : self.W - (self.W * 0.0625 - 28) - SideButton.width,
-                             y: top ? self.H * 0.0625 + 8 : self.H - self.H * 0.0625 - h, width: SideButton.width, height: h)
+            b.frame = NSRect(x: left ? self.W * Spacing.x - 28 : self.W - (self.W * Spacing.x - 28) - SideButton.width,
+                             y: top ? self.H * Spacing.y + 8 : self.H - self.H * Spacing.y - h, width: SideButton.width, height: h)
             b.isHidden = !sides
         }
         place(favo, true, true)
@@ -514,15 +514,15 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         place(fullButton, false, false)
         fullButton.chosen = full
 
-        let colTop = H * 0.0625 + 160
-        left.frame = NSRect(x: W * 0.0625 - 36, y: colTop, width: 58, height: max(0, H - 2 * colTop))
-        right.frame = NSRect(x: W - (W * 0.0625 - 36) - 58, y: colTop, width: 58, height: max(0, H - 2 * colTop))
+        let colTop = H * Spacing.y + 160
+        left.frame = NSRect(x: W * Spacing.x - 36, y: colTop, width: 58, height: max(0, H - 2 * colTop))
+        right.frame = NSRect(x: W - (W * Spacing.x - 36) - 58, y: colTop, width: 58, height: max(0, H - 2 * colTop))
         left.isHidden = !sides
         right.isHidden = !sides
 
         let page: NSRect
         if fullShown { page = bounds.insetBy(dx: 6, dy: 6) } else if small { page = NSRect(x: 36, y: 44, width: W - 72, height: H - 88) } else {
-            page = NSRect(x: W * 0.0625 + 80, y: H * 0.0625 + 24, width: W - 2 * (W * 0.0625 + 80), height: H - 2 * (H * 0.0625 + 24))
+            page = NSRect(x: W * Spacing.x + 80, y: H * Spacing.y + 24, width: W - 2 * (W * Spacing.x + 80), height: H - 2 * (H * Spacing.y + 24))
         }
         if !fullMoving {
             card.frame = page
@@ -531,7 +531,7 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         }
 
         let titleW = W * (small ? 1 : 0.6) - (small ? 200 : 0)
-        let ty = small ? 22 - 12 : H * 0.03125 + 12 - 12
+        let ty = small ? 22 - 12 : H * Spacing.y / 2 + 12 - 12
         let titleFrame = NSRect(x: (W - titleW) / 2, y: ty, width: titleW, height: 24)
         if let from = riseFrom, !titleButton.isHidden, !reduceMotion {
             // from where the words were typed, up to their place, as the results come in under them
@@ -550,14 +550,14 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
             riseFrom = nil
             titleButton.frame = titleFrame
         }
-        let py = H - (small ? 22 : H * 0.03125 + 12) - 12
+        let py = H - (small ? 22 : H * Spacing.y / 2 + 12) - 12
         let pw = min(W * 0.7 - 120, max(40, attributed(pathButton.word, Fonts.words(16)).size().width + 8))
         pathButton.frame = NSRect(x: (W - pw) / 2, y: py, width: pw, height: 24)
         let gap: CGFloat = small ? 24 : 64
         back.frame = NSRect(x: pathButton.frame.minX - gap - 24, y: py - 4, width: 24, height: 32)
         forward.frame = NSRect(x: pathButton.frame.maxX + gap, y: py - 4, width: 24, height: 32)
 
-        let sw = small ? W - 72 : min(640, W - 2 * (W * 0.0625 + 120))
+        let sw = small ? W - 72 : min(640, W - 2 * (W * Spacing.x + 120))
         search.frame = NSRect(x: (W - sw) / 2, y: H / 2 - 16, width: sw, height: 32)
         strip.frame = NSRect(x: 0, y: 0, width: W, height: 28)
         marks.frame = NSRect(x: 14, y: 14, width: 13, height: 40)
