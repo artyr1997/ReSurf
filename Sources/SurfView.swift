@@ -33,6 +33,10 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
     private let forward = WordButton(">", font: Fonts.buttons(26)) {}
     private let pathButton = WordButton("", font: Fonts.words(16)) {}
     let search = Field(size: 24, align: .center)
+    /// the address written in where it stands (the site at the top, the page's name at the foot), the page left shown
+    private let inPlace = Field(size: 16, align: .center)
+    /// where it is being written: the top line (true) or the foot (false); nil: not
+    private var inPlaceTop: Bool?
     private let marks = Marks()
     private let strip = DragStrip()
     private var popup: Popup?
@@ -74,8 +78,11 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         right.actions = left.actions
         addSubview(left)
         addSubview(right)
-        titleButton.action = { [weak self] in self?.editAddress() }
-        pathButton.action = { [weak self] in self?.editAddress() }
+        titleButton.action = { [weak self] in self?.editInPlace(top: true) }
+        pathButton.action = { [weak self] in self?.editInPlace(top: false) }
+        inPlace.isHidden = true
+        // a click elsewhere: left as it was
+        inPlace.onEnd = { [weak self] in self?.endInPlace() }
         back.action = { [weak self] in self?.current?.web?.goBack() }
         back.toolTip = "Back (⌘[)"
         forward.action = { [weak self] in self?.current?.web?.goForward() }
@@ -84,6 +91,7 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         search.placeholder = "Search"
         search.placeholderAlpha = 0.5
         addSubview(search)
+        addSubview(inPlace)
         addSubview(strip)
         addSubview(marks)
     }
@@ -240,8 +248,44 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         search.focus()
     }
 
+    /// The address written in where it is shown: the site's line at the top (on a page of results, what was
+    /// searched for), or the page's name at the foot; the page stays. Return goes there, Esc or a click elsewhere
+    /// leaves it as it was.
+    func editInPlace(top: Bool) {
+        guard let c = current, !searching else { return editAddress() }
+        closePopup()
+        inPlaceTop = top
+        inPlace.stringValue = top && results ? Address.query(c.url) : c.url
+        refreshPage()
+        layout()
+        window?.makeFirstResponder(inPlace)
+        inPlace.currentEditor()?.selectAll(nil)
+    }
+
+    private func submitInPlace() {
+        guard let c = current else { return endInPlace() }
+        let q = inPlace.stringValue.trimmingCharacters(in: .whitespaces)
+        inPlaceTop = nil
+        refreshPage()
+        guard !q.isEmpty else { return }
+        let url = Address.url(q)
+        c.url = url
+        if let u = URL(string: url) { page(c).load(URLRequest(url: u)) }
+        activate(c.id)
+        if let w = c.web { window?.makeFirstResponder(w) }
+    }
+
+    private func endInPlace() {
+        guard inPlaceTop != nil else { return }
+        inPlaceTop = nil
+        refreshPage()
+        if let w = current?.web, window?.firstResponder === inPlace.currentEditor() || window?.firstResponder == nil { window?.makeFirstResponder(w) }
+    }
+
     func editAddress() {
         guard let c = current else { return newTab() }
+        // a page shown: written in where its site stands, at the top
+        if !searching { return editInPlace(top: true) }
         closePopup()
         editing = "address"
         search.stringValue = c.url
@@ -464,6 +508,8 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         guard let c = current, !searching else {
             stage.subviews.forEach { $0.removeFromSuperview() }
             for v in [titleButton, back, forward, pathButton] as [NSView] { v.isHidden = true }
+            inPlaceTop = nil
+            inPlace.isHidden = true
             card.isHidden = true
             search.isHidden = false
             favo.enabled = current != nil
@@ -486,6 +532,10 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         pathButton.toolTip = c.url
         for v in [titleButton, back, forward, pathButton] as [NSView] { v.isHidden = fullShown }
         for v in [back, forward, pathButton] as [NSView] { v.isHidden = v.isHidden || results }
+        // the line being written in stands where its words were
+        inPlace.isHidden = inPlaceTop == nil || fullShown
+        if inPlaceTop == true { titleButton.isHidden = true }
+        if inPlaceTop == false { pathButton.isHidden = true }
         back.alphaValue = 0.6
         forward.alphaValue = 0.6
         // search results lie on the glass itself: no card
@@ -559,6 +609,12 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         let gap: CGFloat = small ? 24 : 64
         back.frame = NSRect(x: pathButton.frame.minX - gap - 24, y: py - 4, width: 24, height: 32)
         forward.frame = NSRect(x: pathButton.frame.maxX + gap, y: py - 4, width: 24, height: 32)
+
+        // the address being written in: on the top line, as wide as the title's; at the foot, as wide as the page's name may be
+        if let top = inPlaceTop {
+            inPlace.frame = top ? NSRect(x: titleFrame.minX, y: titleFrame.minY, width: titleFrame.width, height: 24)
+                                : NSRect(x: (W - (W * 0.7 - 120)) / 2, y: py, width: W * 0.7 - 120, height: 24)
+        }
 
         let sw = small ? W - 72 : min(640, W - 2 * (Spacing.inner(W) + 40))
         search.frame = NSRect(x: (W - sw) / 2, y: H / 2 - 16, width: sw, height: 32)
@@ -690,6 +746,13 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
             search.focus()
             (search.currentEditor() as? NSTextView)?.insertText(ch, replacementRange: NSRange(location: NSNotFound, length: 0))
             return true
+        }
+        if inPlace.editing {
+            switch e.keyCode {
+            case 36, 76: submitInPlace(); return true
+            case 53: endInPlace(); return true
+            default: return false
+            }
         }
         if search.editing {
             switch e.keyCode {

@@ -321,7 +321,13 @@ final class Field: NSTextField, NSTextFieldDelegate {
         return ok
     }
 
-    func controlTextDidEndEditing(_ obj: Notification) { showPlaceholder() }
+    /// typing in it ended (Return, Esc, or a click elsewhere)
+    var onEnd: (() -> Void)?
+
+    func controlTextDidEndEditing(_ obj: Notification) {
+        showPlaceholder()
+        onEnd?()
+    }
 
     func controlTextDidChange(_ obj: Notification) {
         if let maxLength, stringValue.count > maxLength {

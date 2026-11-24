@@ -89,6 +89,7 @@
 			background: var(--mark-left) left center / auto 100% no-repeat, var(--mark-right) right center / auto 100% no-repeat,
 				var(--mark-mid) 0.65em center / calc(100% - 1.3em) 100% no-repeat;
 		}
+		#resurf-search .re-more { margin: 8px 0 40px; text-align: center; font-size: 18px; letter-spacing: 0.3em; opacity: 0.5; }
 		#resurf-search .re-none { margin: 40px 0; text-align: center; font-size: 18px; opacity: 0.6; }
 		html.resurf-full #resurf-search { top: calc(3.125vh + 30px); left: calc(6.25vw + 40px); right: calc(6.25vw + 40px); }
 		/* a small window (ReSurf's, less its margins): closer to the edges */
@@ -134,10 +135,11 @@
 	};
 	// textContent: innerText is empty while the page is held hidden
 	const text = (el) => (el?.textContent || '').replace(/\s+/g, ' ').trim();
-	const resultsRoot = () => document.querySelector('#rso') || document.querySelector('#search') || document.querySelector('#main') || document.body;
+	const resultsRoot = (doc = document) => doc.querySelector('#rso') || doc.querySelector('#search') || doc.querySelector('#main') || doc.body;
 
-	function findPages() {
-		const root = resultsRoot();
+	/** the results in a page: this one, or one fetched (the next ten, as the list scrolls) */
+	function findPages(doc = document) {
+		const root = resultsRoot(doc);
 		const heads = [...root.querySelectorAll('h3, [role="heading"][aria-level="3"]')];
 		const seen = new Set();
 		const found = [];
@@ -160,7 +162,10 @@
 			let line = '';
 			for (const el of box.querySelectorAll('div, span')) {
 				if (el.contains(heading) || a.contains(el) || heading.contains(el) || el.querySelector('div, style, script')) continue;
-				if (el.closest('[aria-hidden="true"]') || getComputedStyle(el).display === 'none') continue;
+				if (el.closest('[aria-hidden="true"]')) continue;
+				try {
+					if ((doc.defaultView || window).getComputedStyle(el).display === 'none') continue;
+				} catch {}
 				const t = text(el);
 				if (t.length > line.length && t !== title && !/^https?:\/\//.test(t)) line = t;
 			}
@@ -253,6 +258,91 @@
 			if (!side.isConnected) document.body.append(side);
 		}).observe(document.documentElement, { childList: true, subtree: true });
 		finishRender(main, items, prevAt, nextAt);
+		endless(main, items, results);
+	}
+
+	/** Google's page at `url`, opened out of sight (an iframe of the same site: Google draws its results with
+	 * its scripts, so a page only fetched has none), its results read once they stop coming; then it goes.
+	 * Sandboxed: it can't take the tab away. */
+	function readPage(url) {
+		return new Promise((resolve) => {
+			const f = document.createElement('iframe');
+			f.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+			f.setAttribute('aria-hidden', 'true');
+			f.tabIndex = -1;
+			f.style.cssText = 'position:fixed;left:-10000px;top:0;width:1000px;height:2400px;border:0;visibility:hidden;pointer-events:none';
+			f.src = url;
+			const begun = Date.now();
+			let last = -1;
+			let still = 0;
+			const look = () => {
+				let found = [];
+				try {
+					if (f.contentDocument?.body) found = findPages(f.contentDocument);
+				} catch {}
+				still = found.length >= enough && found.length === last ? still + 1 : 0;
+				last = found.length;
+				if (still >= 2 || Date.now() - begun > 8000) {
+					f.remove();
+					return resolve(found);
+				}
+				setTimeout(look, 250);
+			};
+			document.documentElement.append(f);
+			setTimeout(look, 500);
+		});
+	}
+
+	/** Scrolled near the list's end, the next ten come in under it (Google's next page, read as this one
+	 * was, the ones already shown left out); until a few pages in a row bring nothing new. */
+	function endless(main, items, results) {
+		const shown = new Set(results.map((r) => r.href));
+		let next = (Number(params.get('start')) || 0) + 10;
+		let loading = false;
+		let ended = !results.length;
+		let empty = 0;
+		const more = document.createElement('p');
+		more.className = 're-more';
+		more.textContent = '⋯';
+		more.hidden = true;
+		items.after(more);
+		const near = () => main.scrollTop + main.clientHeight > main.scrollHeight - 900;
+		// the next page read ahead, while this one is looked at: there when the list is scrolled to its end
+		const ahead = () => {
+			const p = new URLSearchParams(params);
+			p.set('start', String(next));
+			next += 10;
+			return readPage(location.href.split('?')[0] + '?' + p.toString());
+		};
+		let coming = ended ? null : ahead();
+		async function load() {
+			if (loading || ended || !coming || !near()) return;
+			loading = true;
+			more.hidden = false;
+			try {
+				const found = (await coming).filter((r) => !shown.has(r.href));
+				empty = found.length ? 0 : empty + 1;
+				if (empty >= 2 || next > 400) ended = true;
+				coming = ended ? null : ahead();
+				found.forEach((r) => shown.add(r.href));
+				// they rise one after another, as the first ones did
+				const ol = list(found);
+				[...ol.children].forEach((li, k) => {
+					li.style.setProperty('--i', String(Math.min(k, 8) * 0.4));
+					items.append(li);
+				});
+			} catch {
+				ended = true;
+			}
+			loading = false;
+			more.hidden = true;
+			// a list still too short to scroll: the next ten too
+			setTimeout(load, 60);
+		}
+		main.addEventListener('scroll', load, { passive: true });
+		// and now and then besides (a scroll the page wasn't told of: the window out of sight, a key held)
+		const every = setInterval(() => (main.isConnected && !ended ? load() : ended && clearInterval(every)), 700);
+		setTimeout(load, 60);
 	}
 
 	/** The buttons at the sides: the kinds; and where the pages before and after are (← / →). Pages: Google's counted by start= (ten results
@@ -282,9 +372,11 @@
 			document.activeElement.blur();
 		}
 
-		const all = [...items.children];
+		// (the list grows as it scrolls: its items counted each time)
+		let all = [...items.children];
 		let chosen = -1;
 		const choose = (i) => {
+			all = [...items.children];
 			all[chosen]?.classList.remove('re-on');
 			chosen = Math.max(0, Math.min(all.length - 1, i));
 			all[chosen].classList.add('re-on');

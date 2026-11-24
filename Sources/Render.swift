@@ -41,7 +41,8 @@ enum Render {
     }
 }
 
-// --probe <url> [--size W×H]: a page loaded out of sight, then what its root and its first result say of themselves
+// --probe <url> [--size W×H] [--scroll]: a page loaded out of sight, then what its root and its first result say of
+// themselves (--scroll: and how many results there are after its list is scrolled to the end)
 enum Probe {
     static func run(_ url: String) {
         var size = NSSize(width: 1440, height: 900)
@@ -68,5 +69,17 @@ enum Probe {
             done = true
         }
         while !done { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+        // --scroll: the results' list scrolled to its end, twice, and counted after each (the next ones come in)
+        guard CommandLine.arguments.contains("--scroll") else { return }
+        for _ in 0..<2 {
+            w.main.current?.web?.evaluateJavaScript("document.querySelector('#resurf-search').scrollTop = 1e9") { _, _ in }
+            RunLoop.main.run(until: Date().addingTimeInterval(12))
+            var counted = false
+            w.main.current?.web?.evaluateJavaScript("document.querySelectorAll('#resurf-search li').length") { r, _ in
+                print("after scrolling:", r ?? "nil")
+                counted = true
+            }
+            while !counted { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+        }
     }
 }
