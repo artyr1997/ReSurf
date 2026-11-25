@@ -117,6 +117,18 @@ final class SurfView: Flipped, WKNavigationDelegate, WKUIDelegate, WKScriptMessa
         } else if !isMain {
             // no two windows' tabs share an id
             nextId = (NSApp.windows.count + 1) * 1_000_000
+            // another window: the favourites on its left too (as they are kept, each as it was pinned), its own tabs
+            // on the right as they are opened
+            let main = NSApp.windows.compactMap { ($0 as? SurfWindow)?.main }.first { $0.isMain && $0 !== self }
+            let kept: [Tab] = main?.tabs.filter(\.favorite) ?? {
+                guard let data = try? Data(contentsOf: Self.stateFile),
+                      let saved = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return [] }
+                return ((saved["tabs"] as? [[String: Any]]) ?? []).compactMap(Tab.from).filter(\.favorite)
+            }()
+            for f in kept {
+                tabs.append(Tab(id: nextId, url: f.home ?? f.url, title: f.title, favorite: true, home: f.home, icon: f.icon))
+                nextId += 1
+            }
         }
         searching = active == nil
         apply()
