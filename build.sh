@@ -34,8 +34,9 @@ else
   codesign --force -s - -r='designated => identifier "com.artursavytskyi.resurf"' "$APP"
 fi
 if [ "$1" = "--install" ]; then
-	DEST=/Applications/ReSpace
-	[ -d "$DEST" ] || DEST=/Applications
+	# where it is already: straight in /Applications, or in /Applications/ReSpace; new: /Applications
+	DEST=/Applications
+	[ ! -d /Applications/ReSurf.app ] && [ -d /Applications/ReSpace/ReSurf.app ] && DEST=/Applications/ReSpace
 	osascript -e 'quit app id "com.artursavytskyi.resurf"' 2>/dev/null || true
 	sleep 1
 	rm -rf "$DEST/ReSurf.app"
