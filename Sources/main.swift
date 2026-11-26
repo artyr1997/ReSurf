@@ -9,9 +9,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Spacing.start()
         // keys of one's own, as set in ReDesk's keys popup (⌘/)
         OwnKeys.start(app: "ReSurf", standard: [
-            "newWindow": .init(45, "n"), "newTab": .init(17, "t"), "address": .init(37, "l"), "closeTab": .init(13, "w", [.command, .shift]),
-            "nextTab": .init(48, "\t", .control), "reload": .init(15, "r"), "favourite": .init(2, "d"), "video": .init(3, "f"),
-            "pageFull": .init(3, "f", [.command, .shift]), "info": .init(34, "i"),
+            "newWindow": .init(45, "n"), "newTab": .init(17, "t"), "address": .init(37, "l"),
+            "closeTab": .init(13, "w", [.command, .shift]), "nextTab": .init(48, "\t", .control), "tabUp": .init(126, "\u{F700}", .shift),
+            "tabDown": .init(125, "\u{F701}", .shift), "back": .init(33, "["), "forward": .init(30, "]"),
+            "reload": .init(15, "r"), "favourite": .init(2, "d"), "video": .init(3, "f"),
+            "pageFull": .init(3, "f", [.command, .shift]), "info": .init(34, "i"), "left": .init(123, "\u{F702}", []),
+            "right": .init(124, "\u{F703}", []), "up": .init(126, "\u{F700}", []), "down": .init(125, "\u{F701}", []),
+            "enter": .init(36, "\r", []),
         ])
         NSApp.appearance = NSAppearance(named: .darkAqua)
         NSApp.mainMenu = menu()

@@ -3,7 +3,8 @@ import AppKit
 /// Keys of one's own, set in ReDesk's keys popup (⌘/) and kept in Application Support/ReSpace/keys.json
 /// ({"ReSurf": {"newTab": "keyCode:modifiers"}}). The app goes on knowing only its own keys: a key of one's
 /// own pressed is handed on as the key it stands for, and that key itself does nothing any more (unless it
-/// is another one's own). ReDesk says when they change (com.artursavytskyi.re.keys).
+/// is another one's own). A key without ⌘, ⌃ or ⌥ is left to the text while typing. ReDesk says when they
+/// change (com.artursavytskyi.re.keys).
 enum OwnKeys {
     struct Combo: Equatable {
         var key: UInt16
@@ -66,6 +67,9 @@ enum OwnKeys {
         guard !own.isEmpty else { return event }
         if event.cgEvent?.getIntegerValueField(.eventSourceUserData) == mark { return event }
         let pressed = Combo(event)
+        // a key without ⌘, ⌃ or ⌥ while typing (a text field or area, the terminal) is the text's: neither handed on
+        // as another nor taken away
+        if pressed.flags.intersection([.command, .control, .option]).isEmpty && typing() { return event }
         // a key of one's own: handed on as the one it stands for
         if let (what, _) = own.first(where: { $0.value == pressed }), let was = standard[what] {
             // made as the system makes a key's event (its characters from the keyboard), which the menus and
@@ -86,6 +90,13 @@ enum OwnKeys {
         // a key that has been given another: no longer this one's
         if standard.contains(where: { own[$0.key] != nil && $0.value.combo == pressed }) { return nil }
         return event
+    }
+
+    /// something being typed: a text field or area has the focus, or a terminal
+    private static func typing() -> Bool {
+        guard let responder = NSApp.keyWindow?.firstResponder else { return false }
+        if responder is NSText { return true }
+        return String(describing: type(of: responder)).contains("Terminal")
     }
 }
 
