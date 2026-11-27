@@ -188,9 +188,12 @@ final class Lang {
         }
     }
 
-    /// once, at start: the language ReDesk keeps, and its word when it changes
+    /// once, at start: the language ReDesk keeps (in Application Support/ReSpace/language, a file of the suite's
+    /// own: ReDesk's settings are another app's data to macOS, which would ask each time), and its word when it changes
     func follow() {
-        set(UserDefaults(suiteName: "com.artursavytskyi.redesk")?.string(forKey: "language") ?? "en", animate: false)
+        let file = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("ReSpace/language")
+        let kept = (try? String(contentsOf: file, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines)
+        set(kept.flatMap { $0.isEmpty ? nil : $0 } ?? "en", animate: false)
         DistributedNotificationCenter.default().addObserver(forName: .init("com.artursavytskyi.re.language"), object: nil, queue: .main) { [weak self] note in
             self?.set(note.object as? String ?? "en", animate: true)
         }
